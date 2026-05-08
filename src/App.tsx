@@ -21,6 +21,9 @@ import { AdminLogin } from '@/pages/admin/AdminLogin';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { QuestionManagement } from '@/pages/admin/QuestionManagement';
 import { UserManagement } from '@/pages/admin/UserManagement';
+import { AdminHandbook } from '@/pages/admin/AdminHandbook';
+import { AdminDaily } from '@/pages/admin/AdminDaily';
+import { AdminSettings } from '@/pages/admin/AdminSettings';
 
 const Loading = () => (
   <div className="min-h-screen bg-bg-primary flex items-center justify-center">
@@ -58,6 +61,9 @@ function App() {
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/questions" element={<QuestionManagement />} />
           <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/handbook" element={<AdminHandbook />} />
+          <Route path="/admin/daily" element={<AdminDaily />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
         </Routes>
       </Router>
     </Suspense>
