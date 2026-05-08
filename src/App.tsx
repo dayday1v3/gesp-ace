@@ -12,6 +12,10 @@ import { Coding } from '@/pages/Coding';
 import { Exam } from '@/pages/Exam';
 import { Diagnosis } from '@/pages/Diagnosis';
 import { Report } from '@/pages/Report';
+import { Favorites } from '@/pages/Favorites';
+import { Handbook } from '@/pages/Handbook';
+import { HistoryPage } from '@/pages/HistoryPage';
+import { TimedPractice } from '@/pages/TimedPractice';
 
 const Loading = () => (
   <div className="min-h-screen bg-bg-primary flex items-center justify-center">
@@ -39,6 +43,10 @@ function App() {
           <Route path="/exam" element={<Exam />} />
           <Route path="/diagnosis" element={<Diagnosis />} />
           <Route path="/report" element={<Report />} />
+          <Route path="/favorites" element={<Favorites />} />
+          <Route path="/handbook" element={<Handbook />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/timed" element={<TimedPractice />} />
         </Routes>
       </Router>
     </Suspense>
