@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, BookOpen, Sparkles, Check, RotateCcw, Play, Filter, BarChart3, Target, Star, ChevronRight, Eye } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { ArrowLeft, Trash2, BookOpen, Sparkles, Check, RotateCcw, Play, BarChart3, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
