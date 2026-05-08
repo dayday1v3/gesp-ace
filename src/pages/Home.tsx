@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, BookOpen, FileWarning } from 'lucide-react';
+import { Calendar, BookOpen, FileWarning, Brain, TrendingUp } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { LevelCard } from '@/components/common/LevelCard';
 import { DailyPracticeBanner } from '@/components/common/DailyPracticeBanner';
@@ -34,6 +34,22 @@ export const Home: React.FC = () => {
 
   const quickActions = [
     {
+      icon: Brain,
+      label: 'AI智能诊断',
+      description: '薄弱点分析+学习路径',
+      color: 'text-purple-600',
+      bg: 'bg-purple-100',
+      path: '/diagnosis',
+    },
+    {
+      icon: TrendingUp,
+      label: '学习报告',
+      description: '周报/月报+进步追踪',
+      color: 'text-blue-600',
+      bg: 'bg-blue-100',
+      path: '/report',
+    },
+    {
       icon: BookOpen,
       label: '知识点地图',
       description: '查看知识掌握度',
@@ -41,6 +57,9 @@ export const Home: React.FC = () => {
       bg: 'bg-primary/10',
       path: '/knowledge',
     },
+  ];
+
+  const bottomActions = [
     {
       icon: FileWarning,
       label: '错题本',
@@ -79,6 +98,39 @@ export const Home: React.FC = () => {
           remainingQuestions={remainingQuestions}
         />
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-3xl p-6 border border-purple-100"
+        >
+          <div className="flex items-start gap-4">
+            <div className="text-5xl">🤖</div>
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-purple-700 mb-2">
+                AI 智能诊断报告
+              </h2>
+              <p className="text-sm text-purple-600 mb-4">
+                检测到 4 个薄弱知识点，制定了个性化学习路径
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {['循环结构', '进制转换', '函数参数传递', '贪心算法'].map((topic) => (
+                  <span key={topic} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                    {topic}
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={() => navigate('/diagnosis')}
+                className="mt-4 text-purple-700 font-medium text-sm flex items-center gap-1 hover:underline"
+              >
+                查看详细诊断
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
         <section>
           <motion.h2
             initial={{ opacity: 0, x: -20 }}
@@ -116,13 +168,39 @@ export const Home: React.FC = () => {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {quickActions.map((action, index) => (
             <motion.div
               key={action.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + index * 0.1 }}
+            >
+              <Card
+                hover
+                onClick={() => navigate(action.path)}
+                className="flex items-center gap-4"
+              >
+                <div className={`p-3 rounded-2xl ${action.bg}`}>
+                  <action.icon className={`w-6 h-6 ${action.color}`} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-text-primary">{action.label}</h3>
+                  <p className="text-sm text-text-secondary">{action.description}</p>
+                </div>
+                <span className="text-2xl">→</span>
+              </Card>
+            </motion.div>
+          ))}
+        </section>
+
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {bottomActions.map((action, index) => (
+            <motion.div
+              key={action.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 + index * 0.1 }}
             >
               <Card
                 hover

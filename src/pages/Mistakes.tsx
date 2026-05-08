@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, BookOpen, Trash2, Sparkles, Check, X, Play, Filter, BarChart3, RotateCcw, Target } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Trash2, BookOpen, Sparkles, Check, RotateCcw, Play, Filter, BarChart3, Target, Star, ChevronRight, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/Card';
@@ -12,7 +12,7 @@ type ViewMode = 'list' | 'practice';
 
 export const Mistakes: React.FC = () => {
   const navigate = useNavigate();
-  const { mistakes, removeFromMistakes, dailyAnswers } = usePracticeStore();
+  const { mistakes, removeFromMistakes } = usePracticeStore();
   const [filter, setFilter] = useState<FilterType>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentPracticeIndex, setCurrentPracticeIndex] = useState(0);
