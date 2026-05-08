@@ -17,6 +17,11 @@ import { Handbook } from '@/pages/Handbook';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { TimedPractice } from '@/pages/TimedPractice';
 
+import { AdminLogin } from '@/pages/admin/AdminLogin';
+import { AdminDashboard } from '@/pages/admin/AdminDashboard';
+import { QuestionManagement } from '@/pages/admin/QuestionManagement';
+import { UserManagement } from '@/pages/admin/UserManagement';
+
 const Loading = () => (
   <div className="min-h-screen bg-bg-primary flex items-center justify-center">
     <div className="text-center space-y-4">
@@ -47,6 +52,12 @@ function App() {
           <Route path="/handbook" element={<Handbook />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/timed" element={<TimedPractice />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/questions" element={<QuestionManagement />} />
+          <Route path="/admin/users" element={<UserManagement />} />
         </Routes>
       </Router>
     </Suspense>
