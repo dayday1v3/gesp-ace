@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { practiceService, startPracticeSchema, submitAnswerSchema, completePracticeSchema } from '../services/practiceService.js';
-import { successResponse, paginatedResponse } from '../utils/response.js';
+import { successResponse, createdResponse, paginatedResponse } from '../utils/response.js';
 
 export class PracticeController {
   async startPractice(req: Request, res: Response): Promise<void> {
@@ -38,6 +38,4 @@ export class PracticeController {
   }
 }
 
-function createdResponse(res: Response, data: unknown, message: string): void {
-  successResponse(res, data, message, 201);
-}
+export const practiceController = new PracticeController();
