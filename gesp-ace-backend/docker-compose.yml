@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -13,7 +11,7 @@ services:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gespace}?schema=public
       - REDIS_URL=redis://redis:6379
       - JUDGE0_URL=http://judge0:2358
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-env}
       - JWT_EXPIRES_IN=2h
       - JWT_REFRESH_EXPIRES_IN=7d
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5173}
@@ -70,21 +68,85 @@ services:
     networks:
       - gesp-network
 
+  # Official Judge0 CE stack (judge0ce/judge0 on Docker Hub is not available).
+  # Docs: https://github.com/judge0/judge0 — server + workers + db + redis.
   judge0:
-    image: judge0ce/judge0:latest
+    image: judge0/judge0:1.13.1
     container_name: gesp-judge0
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
     ports:
       - "2358:2358"
-    environment:
-      - JUDGE0_HTTP_PORT=2358
+    privileged: true
+    command: ["./scripts/server"]
     ulimits:
       nproc: 100
       nofile: 20000
+    depends_on:
+      judge0-db:
+        condition: service_started
+      judge0-redis:
+        condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:2358/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:2358/ || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    container_name: gesp-judge0-workers
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    command: ["./scripts/workers"]
+    depends_on:
+      judge0-db:
+        condition: service_started
+      judge0-redis:
+        condition: service_started
+      judge0:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+  judge0-db:
+    image: postgres:16.2
+    container_name: gesp-judge0-db
+    env_file:
+      - judge0.conf
+    volumes:
+      - judge0_postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+  judge0-redis:
+    image: redis:7.2.4
+    container_name: gesp-judge0-redis
+    env_file:
+      - judge0.conf
+    command:
+      [
+        "bash",
+        "-c",
+        'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"',
+      ]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
       - gesp-network
@@ -93,6 +155,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  judge0_postgres_data:
     driver: local
 
 networks:
