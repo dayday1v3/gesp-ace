@@ -59,6 +59,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: gesp-redis
+    # Host Node app uses REDIS_URL=redis://localhost:6379 from .env
+    ports:
+      - "6379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
