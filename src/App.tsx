@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -16,6 +16,8 @@ import { Favorites } from '@/pages/Favorites';
 import { Handbook } from '@/pages/Handbook';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { TimedPractice } from '@/pages/TimedPractice';
+import { PracticeQuestion } from '@/pages/PracticeQuestion';
+import { PracticeResult } from '@/pages/PracticeResult';
 
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
@@ -37,7 +39,7 @@ const Loading = () => (
 function App() {
   return (
     <Suspense fallback={<Loading />}>
-      <Router>
+      <HashRouter>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/daily" element={<Daily />} />
@@ -55,6 +57,8 @@ function App() {
           <Route path="/handbook" element={<Handbook />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/timed" element={<TimedPractice />} />
+          <Route path="/practice/question/:levelId/:topicId" element={<PracticeQuestion />} />
+          <Route path="/practice/result" element={<PracticeResult />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -65,7 +69,7 @@ function App() {
           <Route path="/admin/daily" element={<AdminDaily />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
         </Routes>
-      </Router>
+      </HashRouter>
     </Suspense>
   );
 }

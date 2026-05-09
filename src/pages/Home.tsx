@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, BookOpen, FileWarning, Brain, TrendingUp } from 'lucide-react';
+import { Calendar, BookOpen, FileWarning, Brain, TrendingUp, FileText } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { LevelCard } from '@/components/common/LevelCard';
 import { DailyPracticeBanner } from '@/components/common/DailyPracticeBanner';
@@ -67,6 +67,14 @@ export const Home: React.FC = () => {
       color: 'text-danger',
       bg: 'bg-danger/10',
       path: '/mistakes',
+    },
+    {
+      icon: FileText,
+      label: '模拟考试',
+      description: '全真模拟GESP认证',
+      color: 'text-orange-600',
+      bg: 'bg-orange-100',
+      path: '/exam',
     },
   ];
 

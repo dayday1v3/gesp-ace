@@ -7,7 +7,7 @@ const navItems = [
   { path: '/', label: '首页', icon: '🏠' },
   { path: '/daily', label: '每日一练', icon: '📝' },
   { path: '/practice', label: '刷题', icon: '📚' },
-  { path: '/mistakes', label: '错题本', icon: '📋' },
+  { path: '/exam', label: '模拟考试', icon: '📋' },
   { path: '/profile', label: '我的', icon: '👤' },
 ];
 
