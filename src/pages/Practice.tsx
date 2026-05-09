@@ -173,7 +173,7 @@ export const Practice: React.FC = () => {
                         variant="primary"
                         size="sm"
                         onClick={() => {
-                          alert('开始练习 ' + level.name);
+                          navigate(`/practice/question/${level.level}/${level.topics[0].id}`);
                         }}
                       >
                         开始练习

@@ -16,6 +16,8 @@ import { Favorites } from '@/pages/Favorites';
 import { Handbook } from '@/pages/Handbook';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { TimedPractice } from '@/pages/TimedPractice';
+import { PracticeQuestion } from '@/pages/PracticeQuestion';
+import { PracticeResult } from '@/pages/PracticeResult';
 
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
@@ -55,6 +57,8 @@ function App() {
           <Route path="/handbook" element={<Handbook />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/timed" element={<TimedPractice />} />
+          <Route path="/practice/question/:levelId/:topicId" element={<PracticeQuestion />} />
+          <Route path="/practice/result" element={<PracticeResult />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
