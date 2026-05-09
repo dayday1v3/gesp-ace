@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -26,6 +26,7 @@ import { UserManagement } from '@/pages/admin/UserManagement';
 import { AdminHandbook } from '@/pages/admin/AdminHandbook';
 import { AdminDaily } from '@/pages/admin/AdminDaily';
 import { AdminSettings } from '@/pages/admin/AdminSettings';
+import { AdminLayout } from '@/components/layout/AdminLayout';
 
 const Loading = () => (
   <div className="min-h-screen bg-bg-primary flex items-center justify-center">
@@ -62,12 +63,14 @@ function App() {
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/questions" element={<QuestionManagement />} />
-          <Route path="/admin/users" element={<UserManagement />} />
-          <Route path="/admin/handbook" element={<AdminHandbook />} />
-          <Route path="/admin/daily" element={<AdminDaily />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin" element={<AdminLayout><Outlet /></AdminLayout>}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="questions" element={<QuestionManagement />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="handbook" element={<AdminHandbook />} />
+            <Route path="daily" element={<AdminDaily />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
         </Routes>
       </HashRouter>
     </Suspense>
