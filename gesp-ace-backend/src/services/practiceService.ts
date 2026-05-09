@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import prisma from '../config/database.js';
 import { questionService } from './questionService.js';
 import { userService } from './userService.js';
@@ -351,3 +352,21 @@ export class PracticeService {
 }
 
 export const practiceService = new PracticeService();
+
+export const startPracticeSchema = z.object({
+  type: z.enum(['daily', 'topic', 'exam', 'timed']),
+  targetLevel: z.number().int().min(1).max(8).optional(),
+  targetKnowledge: z.string().optional(),
+  count: z.number().int().min(1).max(50).optional(),
+});
+
+export const submitAnswerSchema = z.object({
+  practiceId: z.string().uuid(),
+  questionId: z.string().uuid(),
+  answer: z.string(),
+  timeSpent: z.number().optional(),
+});
+
+export const completePracticeSchema = z.object({
+  practiceId: z.string().uuid(),
+});
