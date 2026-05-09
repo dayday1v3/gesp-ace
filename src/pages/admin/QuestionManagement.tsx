@@ -47,6 +47,8 @@ export const QuestionManagement: React.FC = () => {
   const [importProgress, setImportProgress] = useState(0);
   const [selectedParsedQuestions, setSelectedParsedQuestions] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [editingForm, setEditingForm] = useState<any>(null);
 
   const questions = [
     {
@@ -248,6 +250,59 @@ export const QuestionManagement: React.FC = () => {
     } else {
       setSelectedParsedQuestions(parsedQuestions.map(q => q.id));
     }
+  };
+
+  const handleEditQuestion = (question: any) => {
+    setEditingQuestionId(question.id);
+    setEditingForm({ ...question });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingForm || !editingQuestionId) return;
+
+    setParsedQuestions(prev =>
+      prev.map(q => q.id === editingQuestionId ? { ...editingForm } : q)
+    );
+    setEditingQuestionId(null);
+    setEditingForm(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingQuestionId(null);
+    setEditingForm(null);
+  };
+
+  const handleDeleteQuestion = (id: string) => {
+    if (confirm('确定要删除这道题目吗？')) {
+      setParsedQuestions(prev => prev.filter(q => q.id !== id));
+      setSelectedParsedQuestions(prev => prev.filter(qId => qId !== id));
+    }
+  };
+
+  const handleUpdateOption = (index: number, value: string) => {
+    if (!editingForm) return;
+    const newOptions = [...editingForm.options];
+    newOptions[index] = value;
+    setEditingForm({ ...editingForm, options: newOptions });
+  };
+
+  const handleAddOption = () => {
+    if (!editingForm) return;
+    setEditingForm({
+      ...editingForm,
+      options: [...editingForm.options, '']
+    });
+  };
+
+  const handleRemoveOption = (index: number) => {
+    if (!editingForm || editingForm.options.length <= 2) return;
+    const newOptions = editingForm.options.filter((_: any, i: number) => i !== index);
+    setEditingForm({ ...editingForm, options: newOptions });
+  };
+
+  const handleUpdateFormField = (field: string, value: any) => {
+    if (!editingForm) return;
+    setEditingForm({ ...editingForm, [field]: value });
   };
 
   return (
@@ -778,57 +833,254 @@ export const QuestionManagement: React.FC = () => {
                     {parsedQuestions.map((question, index) => (
                       <div
                         key={question.id}
-                        className={`border rounded-xl p-4 transition-all ${
+                        className={`border-2 rounded-xl transition-all ${
                           selectedParsedQuestions.includes(question.id)
                             ? 'border-green-500 bg-green-50'
+                            : editingQuestionId === question.id
+                            ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 bg-white'
                         }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <button
-                            onClick={() => toggleQuestionSelection(question.id)}
-                            className={`w-6 h-6 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors mt-1 ${
-                              selectedParsedQuestions.includes(question.id)
-                                ? 'bg-green-600 border-green-600'
-                                : 'border-gray-300 hover:border-green-500'
-                            }`}
-                          >
-                            {selectedParsedQuestions.includes(question.id) && (
-                              <Check className="w-4 h-4 text-white" />
-                            )}
-                          </button>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm font-medium text-gray-500">
-                                #{index + 1}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                question.type === 'choice'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : question.type === 'judgment'
-                                  ? 'bg-yellow-100 text-yellow-700'
-                                  : 'bg-purple-100 text-purple-700'
-                              }`}>
-                                {question.type === 'choice' ? '单选题' :
-                                 question.type === 'judgment' ? '判断题' : '编程题'}
-                              </span>
-                              <span className="text-xs text-gray-400">
-                                知识点：{question.knowledgePoint}
-                              </span>
-                            </div>
-                            <p className="text-gray-900 mb-2">{question.content}</p>
-                            {question.options.length > 0 && (
-                              <div className="space-y-1 text-sm text-gray-600">
-                                {question.options.map((opt: string, i: number) => (
-                                  <div key={i}>
-                                    {String.fromCharCode(65 + i)}. {opt}
-                                  </div>
-                                ))}
+                        <div className="p-4">
+                          <div className="flex items-start gap-3">
+                            <button
+                              onClick={() => toggleQuestionSelection(question.id)}
+                              className={`w-6 h-6 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors mt-1 ${
+                                selectedParsedQuestions.includes(question.id)
+                                  ? 'bg-green-600 border-green-600'
+                                  : 'border-gray-300 hover:border-green-500'
+                              }`}
+                            >
+                              {selectedParsedQuestions.includes(question.id) && (
+                                <Check className="w-4 h-4 text-white" />
+                              )}
+                            </button>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <span className="text-sm font-medium text-gray-500">
+                                  #{index + 1}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  question.type === 'choice'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : question.type === 'judgment'
+                                    ? 'bg-yellow-100 text-yellow-700'
+                                    : 'bg-purple-100 text-purple-700'
+                                }`}>
+                                  {question.type === 'choice' ? '单选题' :
+                                   question.type === 'judgment' ? '判断题' : '编程题'}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  知识点：{question.knowledgePoint}
+                                </span>
                               </div>
-                            )}
-                            {question.correctAnswer && (
-                              <div className="mt-2 text-sm text-green-600">
-                                答案：{question.correctAnswer}
+
+                              {editingQuestionId === question.id && editingForm ? (
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      题目内容
+                                    </label>
+                                    <textarea
+                                      value={editingForm.content}
+                                      onChange={(e) => handleUpdateFormField('content', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                      rows={3}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      题目类型
+                                    </label>
+                                    <select
+                                      value={editingForm.type}
+                                      onChange={(e) => handleUpdateFormField('type', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                      <option value="choice">单选题</option>
+                                      <option value="judgment">判断题</option>
+                                      <option value="coding">编程题</option>
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      知识点
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={editingForm.knowledgePoint}
+                                      onChange={(e) => handleUpdateFormField('knowledgePoint', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                  </div>
+
+                                  {editingForm.type === 'choice' && editingForm.options && (
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        选项
+                                      </label>
+                                      <div className="space-y-2">
+                                        {editingForm.options.map((opt: string, i: number) => (
+                                          <div key={i} className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-gray-600 w-6">
+                                              {String.fromCharCode(65 + i)}.
+                                            </span>
+                                            <input
+                                              type="text"
+                                              value={opt}
+                                              onChange={(e) => handleUpdateOption(i, e.target.value)}
+                                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                            {editingForm.options.length > 2 && (
+                                              <button
+                                                onClick={() => handleRemoveOption(i)}
+                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                              >
+                                                <X className="w-4 h-4" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <button
+                                        onClick={handleAddOption}
+                                        className="mt-2 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                      >
+                                        + 添加选项
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      正确答案
+                                    </label>
+                                    {editingForm.type === 'choice' && editingForm.options ? (
+                                      <select
+                                        value={editingForm.correctAnswer}
+                                        onChange={(e) => handleUpdateFormField('correctAnswer', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                      >
+                                        <option value="">请选择</option>
+                                        {editingForm.options.map((_: string, i: number) => (
+                                          <option key={i} value={String.fromCharCode(65 + i)}>
+                                            {String.fromCharCode(65 + i)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : editingForm.type === 'judgment' ? (
+                                      <select
+                                        value={editingForm.correctAnswer}
+                                        onChange={(e) => handleUpdateFormField('correctAnswer', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                      >
+                                        <option value="">请选择</option>
+                                        <option value="true">正确</option>
+                                        <option value="false">错误</option>
+                                      </select>
+                                    ) : (
+                                      <textarea
+                                        value={editingForm.correctAnswer}
+                                        onChange={(e) => handleUpdateFormField('correctAnswer', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                        rows={5}
+                                        placeholder="输入编程题的参考答案代码..."
+                                      />
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      难度等级
+                                    </label>
+                                    <select
+                                      value={editingForm.difficulty}
+                                      onChange={(e) => handleUpdateFormField('difficulty', parseInt(e.target.value))}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                      <option value="1">简单</option>
+                                      <option value="2">中等</option>
+                                      <option value="3">困难</option>
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      解析说明
+                                    </label>
+                                    <textarea
+                                      value={editingForm.explanation || ''}
+                                      onChange={(e) => handleUpdateFormField('explanation', e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                      rows={2}
+                                      placeholder="输入题目解析..."
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center gap-2 pt-2">
+                                    <button
+                                      onClick={handleSaveEdit}
+                                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                      保存修改
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEdit}
+                                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                      取消
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-gray-900 mb-2">{question.content}</p>
+                                  {question.options && question.options.length > 0 && (
+                                    <div className="space-y-1 text-sm text-gray-600 mb-2">
+                                      {question.options.map((opt: string, i: number) => (
+                                        <div key={i} className="flex items-start gap-2">
+                                          <span className="font-medium">{String.fromCharCode(65 + i)}.</span>
+                                          <span>{opt}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {question.correctAnswer && (
+                                    <div className="mt-2 text-sm text-green-600">
+                                      <span className="font-medium">答案：</span>
+                                      {question.type === 'judgment'
+                                        ? question.correctAnswer === 'true' ? '正确' : '错误'
+                                        : question.correctAnswer}
+                                    </div>
+                                  )}
+                                  {question.explanation && (
+                                    <div className="mt-2 text-sm text-gray-600 italic">
+                                      <span className="font-medium">解析：</span>{question.explanation}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {editingQuestionId !== question.id && (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  onClick={() => handleEditQuestion(question)}
+                                  className="p-2 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
+                                  title="编辑题目"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteQuestion(question.id)}
+                                  className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-600"
+                                  title="删除题目"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </div>
                             )}
                           </div>
