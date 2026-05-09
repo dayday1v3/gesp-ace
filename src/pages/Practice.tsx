@@ -168,17 +168,6 @@ export const Practice: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    {selectedLevel === level.level && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          navigate(`/practice/question/${level.level}/${level.topics[0].id}`);
-                        }}
-                      >
-                        开始练习
-                      </Button>
-                    )}
                   </div>
                 </div>
 
@@ -192,7 +181,7 @@ export const Practice: React.FC = () => {
                     >
                       <button
                         onClick={() => {
-                          alert('开始练习: ' + topic.name);
+                          navigate(`/practice/question/${level.level}/${topic.id}`);
                         }}
                         className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group"
                       >
