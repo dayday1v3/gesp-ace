@@ -37,9 +37,9 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: gesp-postgres
-    # Host Prisma / psql must reach this DB; without ports, localhost:5432 hits another Postgres (or nothing).
+    # Required for Prisma/psql on the host. If Windows port 5432 is taken, change to "5433:5432" and use localhost:5433 in DATABASE_URL.
     ports:
-      - "${POSTGRES_PUBLISH_PORT:-5432}:5432"
+      - "5432:5432"
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-gespace}
       - POSTGRES_USER=postgres
