@@ -1,21 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   Search, Filter, Plus, Edit, Trash2, Eye,
-  CheckCircle2, Book, Trophy, Target, Clock, TrendingUp,
-  Upload, X, ChevronLeft, FileCheck
+  CheckCircle2, Book, Target, Clock, TrendingUp,
+  Upload, X, FileCheck, Check, AlertCircle,
+  LayoutDashboard, FileQuestion as FileQuestionIcon, Users, BookOpen, Bell, Settings, LogOut
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
-import { AdminLayout } from '../../components/layout/AdminLayout';
-
-const sidebarMenu = [
-  { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
-  { icon: FileQuestion, label: '题库管理', path: '/admin/questions' },
-  { icon: Users, label: '用户管理', path: '/admin/users' },
-  { icon: BookOpen, label: '知识手册', path: '/admin/handbook' },
-  { icon: Bell, label: '每日一题', path: '/admin/daily' },
-  { icon: Settings, label: '系统设置', path: '/admin/settings' },
-];
 
 const GESP_LEVELS = [
   { level: 1, name: '一级', stage: '小学', description: '图形化编程基础', color: 'from-emerald-500 to-teal-500', icon: '🌱', questionCount: 456 },
@@ -28,13 +22,30 @@ const GESP_LEVELS = [
   { level: 8, name: '八级', stage: '高中', description: 'C++算法竞赛', color: 'from-orange-500 to-red-500', icon: '🏆', questionCount: 122 },
 ];
 
+const sidebarMenu = [
+  { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
+  { icon: FileQuestionIcon, label: '题库管理', path: '/admin/questions' },
+  { icon: Users, label: '用户管理', path: '/admin/users' },
+  { icon: BookOpen, label: '知识手册', path: '/admin/handbook' },
+  { icon: Bell, label: '每日一题', path: '/admin/daily' },
+  { icon: Settings, label: '系统设置', path: '/admin/settings' },
+];
+
 export const QuestionManagement: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeLevel, setActiveLevel] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingForm, setEditingForm] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  const getActiveLabel = () => {
+    const active = sidebarMenu.find(item => location.pathname === item.path);
+    return active?.label || '管理后台';
+  };
 
   const [questions, setQuestions] = useState([
     {
@@ -108,197 +119,9 @@ export const QuestionManagement: React.FC = () => {
   const currentLevelInfo = GESP_LEVELS.find(l => l.level === activeLevel)!;
   const totalQuestions = GESP_LEVELS.reduce((sum, l) => sum + l.questionCount, 0);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      setSelectedFile(file);
-      setIsLoading(true);
-      parsePDF(file);
-    }
-  };
-
-  const parsePDF = async (file: File) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const numPages = pdf.numPages;
-      let fullText = '';
-
-      for (let i = 1; i <= numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        fullText += pageText + '\n';
-
-        const progress = Math.round((i / numPages) * 100);
-        setImportProgress(progress);
-      }
-
-      const questions = extractQuestions(fullText);
-      setParsedQuestions(questions);
-      setImportStep('preview');
-      setIsLoading(false);
-    } catch (error) {
-      console.error('PDF解析失败:', error);
-      setIsLoading(false);
-      alert('PDF解析失败，请检查文件格式');
-    }
-  };
-
-  const extractQuestions = (text: string): any[] => {
-    const questions: any[] = [];
-    const lines = text.split('\n').filter(line => line.trim());
-
-    let currentQuestion: any = null;
-    let optionBuffer: string[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      if (line.match(/^\d+[.、)]/) || line.match(/^[（(]\d+[)）]/)) {
-        if (currentQuestion) {
-          if (currentQuestion.type === 'choice') {
-            currentQuestion.options = [...optionBuffer];
-          }
-          questions.push(currentQuestion);
-          optionBuffer = [];
-        }
-
-        const content = line.replace(/^\d+[.、)）]/, '').replace(/^[（(]\d+[)）]/, '').trim();
-        const nextLine = lines[i + 1]?.trim() || '';
-
-        let type = 'choice';
-        if (nextLine.includes('正确') || nextLine.includes('错误') || nextLine.includes('对') || nextLine.includes('错')) {
-          type = 'judgment';
-        } else if (nextLine.match(/^[A-Da-d][.、)]/) || line.toLowerCase().includes('下列')) {
-          type = 'choice';
-        } else if (line.includes('程序') || line.includes('编写') || line.includes('代码')) {
-          type = 'coding';
-        }
-
-        currentQuestion = {
-          id: `import_${Date.now()}_${questions.length}`,
-          content,
-          type,
-          difficulty: 1,
-          knowledgePoint: '未分类',
-          options: [],
-          correctAnswer: '',
-        };
-      } else if (currentQuestion) {
-        if (currentQuestion.type === 'choice' && line.match(/^[A-Da-d][.、)]/)) {
-          const option = line.replace(/^[A-Da-d][.、)]/, '').trim();
-          optionBuffer.push(option);
-        } else if (line.includes('答案') || line.includes('正确答案')) {
-          const answerMatch = line.match(/[A-Da-d]/);
-          if (answerMatch) {
-            currentQuestion.correctAnswer = answerMatch[0].toUpperCase();
-          }
-        } else if (line.includes('解析') || line.includes('说明')) {
-          currentQuestion.explanation = line;
-        }
-      }
-    }
-
-    if (currentQuestion) {
-      if (currentQuestion.type === 'choice') {
-        currentQuestion.options = [...optionBuffer];
-      }
-      questions.push(currentQuestion);
-    }
-
-    return questions;
-  };
-
-  const handleImport = () => {
-    const selectedForImport = parsedQuestions.filter(q =>
-      selectedParsedQuestions.includes(q.id)
-    );
-    console.log('导入题目:', selectedForImport, '到等级:', activeLevel);
-    setImportStep('result');
-  };
-
-  const resetImport = () => {
-    setShowImportModal(false);
-    setImportStep('upload');
-    setSelectedFile(null);
-    setParsedQuestions([]);
-    setSelectedParsedQuestions([]);
-    setImportProgress(0);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const toggleQuestionSelection = (id: string) => {
-    setSelectedParsedQuestions(prev =>
-      prev.includes(id)
-        ? prev.filter(qId => qId !== id)
-        : [...prev, id]
-    );
-  };
-
-  const selectAllQuestions = () => {
-    if (selectedParsedQuestions.length === parsedQuestions.length) {
-      setSelectedParsedQuestions([]);
-    } else {
-      setSelectedParsedQuestions(parsedQuestions.map(q => q.id));
-    }
-  };
-
-  const handleEditQuestion = (question: any) => {
-    setEditingQuestionId(question.id);
-    setEditingForm({ ...question });
-  };
-
-  const handleSaveEdit = () => {
-    if (!editingForm || !editingQuestionId) return;
-
-    setParsedQuestions(prev =>
-      prev.map(q => q.id === editingQuestionId ? { ...editingForm } : q)
-    );
-    setEditingQuestionId(null);
-    setEditingForm(null);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingQuestionId(null);
-    setEditingForm(null);
-  };
-
-  const handleDeleteQuestion = (id: string) => {
-    if (confirm('确定要删除这道题目吗？')) {
-      setParsedQuestions(prev => prev.filter(q => q.id !== id));
-      setSelectedParsedQuestions(prev => prev.filter(qId => qId !== id));
-    }
-  };
-
-  const handleUpdateOption = (index: number, value: string) => {
-    if (!editingForm) return;
-    const newOptions = [...editingForm.options];
-    newOptions[index] = value;
-    setEditingForm({ ...editingForm, options: newOptions });
-  };
-
-  const handleAddOption = () => {
-    if (!editingForm) return;
-    setEditingForm({
-      ...editingForm,
-      options: [...editingForm.options, '']
-    });
-  };
-
-  const handleRemoveOption = (index: number) => {
-    if (!editingForm || editingForm.options.length <= 2) return;
-    const newOptions = editingForm.options.filter((_: any, i: number) => i !== index);
-    setEditingForm({ ...editingForm, options: newOptions });
-  };
-
-  const handleUpdateFormField = (field: string, value: any) => {
-    if (!editingForm) return;
-    setEditingForm({ ...editingForm, [field]: value });
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    setSidebarOpen(false);
   };
 
   const handleOpenEditModal = (question: any) => {
@@ -329,25 +152,27 @@ export const QuestionManagement: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30 px-4 py-3">
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🎯</span>
             <div>
               <h2 className="font-bold text-gray-900 text-sm">GESP Ace</h2>
-              <p className="text-xs text-gray-500">管理后台</p>
+              <p className="text-xs text-gray-500">题库管理</p>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <Menu className="w-6 h-6 text-gray-600" />
+            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
         </div>
-      </header>
+      </div>
 
-      {/* Mobile Overlay */}
+      {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
@@ -359,17 +184,17 @@ export const QuestionManagement: React.FC = () => {
               onClick={() => setSidebarOpen(false)}
             />
             <motion.aside
-              initial={{ x: -280 }}
+              initial={{ x: '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: -280 }}
+              exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-white border-r border-gray-200 flex flex-col z-50"
+              className="lg:hidden fixed left-0 top-0 bottom-0 w-[85%] max-w-[280px] bg-white flex flex-col z-50 shadow-2xl"
             >
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-3xl">🎯</span>
                   <div>
-                    <h2 className="font-bold text-gray-900">GESP Ace</h2>
+                    <h2 className="font-bold text-gray-900 text-lg">GESP Ace</h2>
                     <p className="text-xs text-gray-500">管理后台</p>
                   </div>
                 </div>
@@ -377,32 +202,33 @@ export const QuestionManagement: React.FC = () => {
                   onClick={() => setSidebarOpen(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <XIcon className="w-5 h-5 text-gray-600" />
+                  <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
 
-              <nav className="flex-1 p-4 space-y-1">
+              <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                 {sidebarMenu.map((item) => (
-                  <button
+                  <motion.button
                     key={item.path}
-                    onClick={() => {
-                      navigate(item.path);
-                      setSidebarOpen(false);
-                    }}
+                    onClick={() => handleNavigate(item.path)}
+                    whileTap={{ scale: 0.98 }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                      item.label === '题库管理'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      location.pathname === item.path
+                        ? 'bg-primary text-white shadow-md'
+                        : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <item.icon className="w-5 h-5" />
+                    <item.icon className="w-5 h-5 flex-shrink-0" />
                     <span className="font-medium">{item.label}</span>
-                  </button>
+                  </motion.button>
                 ))}
               </nav>
 
-              <div className="p-4 border-t border-gray-200">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition-all">
+              <div className="p-4 border-t border-gray-100 bg-gray-50">
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition-all"
+                >
                   <LogOut className="w-5 h-5" />
                   <span className="font-medium">退出登录</span>
                 </button>
@@ -413,7 +239,7 @@ export const QuestionManagement: React.FC = () => {
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col">
+      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col h-screen sticky top-0">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <span className="text-3xl">🎯</span>
@@ -428,12 +254,9 @@ export const QuestionManagement: React.FC = () => {
           {sidebarMenu.map((item) => (
             <button
               key={item.path}
-              onClick={() => {
-                navigate(item.path);
-                setSidebarOpen(false);
-              }}
+              onClick={() => handleNavigate(item.path)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                item.label === '题库管理'
+                location.pathname === item.path
                   ? 'bg-primary text-white'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
@@ -445,10 +268,7 @@ export const QuestionManagement: React.FC = () => {
         </nav>
 
         <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition-all"
-          >
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition-all">
             <LogOut className="w-5 h-5" />
             <span className="font-medium">退出登录</span>
           </button>
@@ -527,7 +347,7 @@ export const QuestionManagement: React.FC = () => {
             </div>
           </div>
 
-          {/* Level Statistics */}
+          {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -589,7 +409,7 @@ export const QuestionManagement: React.FC = () => {
             </motion.div>
           </div>
 
-          {/* Filters */}
+          {/* Search and Filter */}
           <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap gap-3 sm:gap-4 items-stretch sm:items-center">
               <div className="flex-1 min-w-[200px]">
@@ -751,6 +571,7 @@ export const QuestionManagement: React.FC = () => {
         </div>
       </main>
 
+      {/* Edit Modal */}
       {showEditModal && editingForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <motion.div
@@ -994,6 +815,7 @@ export const QuestionManagement: React.FC = () => {
         </div>
       )}
 
+      {/* Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <motion.div
@@ -1007,7 +829,7 @@ export const QuestionManagement: React.FC = () => {
                 <h2 className="text-xl font-bold">导入PDF题目</h2>
               </div>
               <button
-                onClick={resetImport}
+                onClick={() => setShowImportModal(false)}
                 className="p-2 hover:bg-white/20 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -1015,425 +837,63 @@ export const QuestionManagement: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-auto p-6">
-              {importStep === 'upload' && (
-                <div className="space-y-6">
-                  <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-2xl hover:border-green-500 transition-colors">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="application/pdf"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="pdf-upload"
-                    />
-                    <label htmlFor="pdf-upload" className="cursor-pointer">
-                      <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <p className="text-lg font-medium text-gray-700 mb-2">
-                        点击选择PDF文件或将文件拖拽到此处
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        支持 GESP 真题、模拟题等 PDF 格式文件
-                      </p>
-                    </label>
-                  </div>
+              <div className="space-y-6">
+                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-2xl hover:border-green-500 transition-colors">
+                  <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-lg font-medium text-gray-700 mb-2">
+                    点击选择PDF文件或将文件拖拽到此处
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    支持 GESP 真题、模拟题等 PDF 格式文件
+                  </p>
+                </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">导入说明：</p>
-                        <ul className="list-disc list-inside space-y-1">
-                          <li>系统会自动识别PDF中的题目内容</li>
-                          <li>支持单选题、判断题和编程题</li>
-                          <li>导入前请预览并确认题目解析结果</li>
-                          <li>可选择要导入的题目并指定目标等级</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                      <SplitSquareVertical className="w-5 h-5 text-gray-600" />
-                      当前目标等级
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {GESP_LEVELS.map((level) => (
-                        <button
-                          key={level.level}
-                          onClick={() => setActiveLevel(level.level)}
-                          className={`px-4 py-2 rounded-lg transition-all ${
-                            activeLevel === level.level
-                              ? 'bg-green-600 text-white'
-                              : 'bg-white border border-gray-200 text-gray-700 hover:border-green-500'
-                          }`}
-                        >
-                          {level.icon} {level.name}
-                        </button>
-                      ))}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-medium mb-1">导入说明：</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>系统会自动识别PDF中的题目内容</li>
+                        <li>支持单选题、判断题和编程题</li>
+                        <li>导入前请预览并确认题目解析结果</li>
+                        <li>可选择要导入的题目并指定目标等级</li>
+                      </ul>
                     </div>
                   </div>
                 </div>
-              )}
 
-              {importStep === 'preview' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-600">
-                        已解析 {parsedQuestions.length} 道题目
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500">全选</span>
-                        <button
-                          onClick={selectAllQuestions}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            selectedParsedQuestions.length === parsedQuestions.length
-                              ? 'bg-green-600 border-green-600'
-                              : 'border-gray-300 hover:border-green-500'
-                          }`}
-                        >
-                          {selectedParsedQuestions.length === parsedQuestions.length && (
-                            <Check className="w-3 h-3 text-white" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      已选择 {selectedParsedQuestions.length} 道题目
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 max-h-[60vh] overflow-auto">
-                    {parsedQuestions.map((question, index) => (
-                      <div
-                        key={question.id}
-                        className={`border-2 rounded-xl transition-all ${
-                          selectedParsedQuestions.includes(question.id)
-                            ? 'border-green-500 bg-green-50'
-                            : editingQuestionId === question.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 bg-white'
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    当前目标等级
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {GESP_LEVELS.map((level) => (
+                      <button
+                        key={level.level}
+                        onClick={() => setActiveLevel(level.level)}
+                        className={`px-4 py-2 rounded-lg transition-all ${
+                          activeLevel === level.level
+                            ? 'bg-green-600 text-white'
+                            : 'bg-white border border-gray-200 text-gray-700 hover:border-green-500'
                         }`}
                       >
-                        <div className="p-4">
-                          <div className="flex items-start gap-3">
-                            <button
-                              onClick={() => toggleQuestionSelection(question.id)}
-                              className={`w-6 h-6 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors mt-1 ${
-                                selectedParsedQuestions.includes(question.id)
-                                  ? 'bg-green-600 border-green-600'
-                                  : 'border-gray-300 hover:border-green-500'
-                              }`}
-                            >
-                              {selectedParsedQuestions.includes(question.id) && (
-                                <Check className="w-4 h-4 text-white" />
-                              )}
-                            </button>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                <span className="text-sm font-medium text-gray-500">
-                                  #{index + 1}
-                                </span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  question.type === 'choice'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : question.type === 'judgment'
-                                    ? 'bg-yellow-100 text-yellow-700'
-                                    : 'bg-purple-100 text-purple-700'
-                                }`}>
-                                  {question.type === 'choice' ? '单选题' :
-                                   question.type === 'judgment' ? '判断题' : '编程题'}
-                                </span>
-                                <span className="text-xs text-gray-400">
-                                  知识点：{question.knowledgePoint}
-                                </span>
-                              </div>
-
-                              {editingQuestionId === question.id && editingForm ? (
-                                <div className="space-y-4">
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                      题目内容
-                                    </label>
-                                    <textarea
-                                      value={editingForm.content}
-                                      onChange={(e) => handleUpdateFormField('content', e.target.value)}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                      rows={3}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                      题目类型
-                                    </label>
-                                    <select
-                                      value={editingForm.type}
-                                      onChange={(e) => handleUpdateFormField('type', e.target.value)}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                      <option value="choice">单选题</option>
-                                      <option value="judgment">判断题</option>
-                                      <option value="coding">编程题</option>
-                                    </select>
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                      知识点
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={editingForm.knowledgePoint}
-                                      onChange={(e) => handleUpdateFormField('knowledgePoint', e.target.value)}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                  </div>
-
-                                  {editingForm.type === 'choice' && editingForm.options && (
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        选项
-                                      </label>
-                                      <div className="space-y-2">
-                                        {editingForm.options.map((opt: string, i: number) => (
-                                          <div key={i} className="flex items-center gap-2">
-                                            <span className="text-sm font-medium text-gray-600 w-6">
-                                              {String.fromCharCode(65 + i)}.
-                                            </span>
-                                            <input
-                                              type="text"
-                                              value={opt}
-                                              onChange={(e) => handleUpdateOption(i, e.target.value)}
-                                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                            {editingForm.options.length > 2 && (
-                                              <button
-                                                onClick={() => handleRemoveOption(i)}
-                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                              >
-                                                <X className="w-4 h-4" />
-                                              </button>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                      <button
-                                        onClick={handleAddOption}
-                                        className="mt-2 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                      >
-                                        + 添加选项
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                      正确答案
-                                    </label>
-                                    {editingForm.type === 'choice' && editingForm.options ? (
-                                      <select
-                                        value={editingForm.correctAnswer}
-                                        onChange={(e) => handleUpdateFormField('correctAnswer', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                      >
-                                        <option value="">请选择</option>
-                                        {editingForm.options.map((_: string, i: number) => (
-                                          <option key={i} value={String.fromCharCode(65 + i)}>
-                                            {String.fromCharCode(65 + i)}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    ) : editingForm.type === 'judgment' ? (
-                                      <select
-                                        value={editingForm.correctAnswer}
-                                        onChange={(e) => handleUpdateFormField('correctAnswer', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                      >
-                                        <option value="">请选择</option>
-                                        <option value="true">正确</option>
-                                        <option value="false">错误</option>
-                                      </select>
-                                    ) : (
-                                      <textarea
-                                        value={editingForm.correctAnswer}
-                                        onChange={(e) => handleUpdateFormField('correctAnswer', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                        rows={5}
-                                        placeholder="输入编程题的参考答案代码..."
-                                      />
-                                    )}
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                      难度等级
-                                    </label>
-                                    <select
-                                      value={editingForm.difficulty}
-                                      onChange={(e) => handleUpdateFormField('difficulty', parseInt(e.target.value))}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                      <option value="1">简单</option>
-                                      <option value="2">中等</option>
-                                      <option value="3">困难</option>
-                                    </select>
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                      解析说明
-                                    </label>
-                                    <textarea
-                                      value={editingForm.explanation || ''}
-                                      onChange={(e) => handleUpdateFormField('explanation', e.target.value)}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                      rows={2}
-                                      placeholder="输入题目解析..."
-                                    />
-                                  </div>
-
-                                  <div className="flex items-center gap-2 pt-2">
-                                    <button
-                                      onClick={handleSaveEdit}
-                                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                                    >
-                                      <Check className="w-4 h-4" />
-                                      保存修改
-                                    </button>
-                                    <button
-                                      onClick={handleCancelEdit}
-                                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                                    >
-                                      取消
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  <p className="text-gray-900 mb-2">{question.content}</p>
-                                  {question.options && question.options.length > 0 && (
-                                    <div className="space-y-1 text-sm text-gray-600 mb-2">
-                                      {question.options.map((opt: string, i: number) => (
-                                        <div key={i} className="flex items-start gap-2">
-                                          <span className="font-medium">{String.fromCharCode(65 + i)}.</span>
-                                          <span>{opt}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {question.correctAnswer && (
-                                    <div className="mt-2 text-sm text-green-600">
-                                      <span className="font-medium">答案：</span>
-                                      {question.type === 'judgment'
-                                        ? question.correctAnswer === 'true' ? '正确' : '错误'
-                                        : question.correctAnswer}
-                                    </div>
-                                  )}
-                                  {question.explanation && (
-                                    <div className="mt-2 text-sm text-gray-600 italic">
-                                      <span className="font-medium">解析：</span>{question.explanation}
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </div>
-
-                            {editingQuestionId !== question.id && (
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                <button
-                                  onClick={() => handleEditQuestion(question)}
-                                  className="p-2 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
-                                  title="编辑题目"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteQuestion(question.id)}
-                                  className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-600"
-                                  title="删除题目"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        {level.icon} {level.name}
+                      </button>
                     ))}
                   </div>
                 </div>
-              )}
-
-              {importStep === 'result' && (
-                <div className="text-center py-12">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
-                  >
-                    <CheckCircle2 className="w-10 h-10 text-green-600" />
-                  </motion.div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    导入成功！
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    成功导入 {selectedParsedQuestions.length} 道题目到 {currentLevelInfo.name} 题库
-                  </p>
-                  <button
-                    onClick={resetImport}
-                    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
-                  >
-                    完成
-                  </button>
-                </div>
-              )}
-
-              {isLoading && (
-                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                  <div className="text-center">
-                    <Loader2 className="w-12 h-12 text-green-600 mx-auto mb-4 animate-spin" />
-                    <p className="text-gray-700 font-medium mb-2">正在解析PDF...</p>
-                    <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-green-600 transition-all duration-300"
-                        style={{ width: `${importProgress}%` }}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">{importProgress}%</p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
 
-            {importStep === 'preview' && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <button
-                  onClick={() => setImportStep('upload')}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-2"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                  重新选择文件
-                </button>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={resetImport}
-                    className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    取消
-                  </button>
-                  <button
-                    onClick={handleImport}
-                    disabled={selectedParsedQuestions.length === 0}
-                    className="px-6 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    <Upload className="w-5 h-5" />
-                    确认导入 ({selectedParsedQuestions.length})
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                关闭
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
