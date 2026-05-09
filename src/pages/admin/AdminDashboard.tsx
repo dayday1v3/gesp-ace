@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { 
   LayoutDashboard, Users, BookOpen, FileQuestion, Settings, Bell, 
   TrendingUp, Clock, Award, BarChart3, CheckCircle2, XCircle, 
-  Eye, Edit, Trash2, Plus, Search, Filter, LogOut, ChevronRight 
+  Eye, Edit, Trash2, Plus, Search, Filter, LogOut, ChevronRight, GraduationCap
 } from 'lucide-react';
 
 const sidebarMenu = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
   { icon: FileQuestion, label: '题库管理', path: '/admin/questions' },
+  { icon: GraduationCap, label: '学科与等级', path: '/admin/curriculum' },
   { icon: Users, label: '用户管理', path: '/admin/users' },
   { icon: BookOpen, label: '知识手册', path: '/admin/handbook' },
   { icon: Bell, label: '每日一题', path: '/admin/daily' },

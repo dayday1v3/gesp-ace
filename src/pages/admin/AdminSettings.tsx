@@ -6,12 +6,13 @@ import {
   Save, RotateCcw, Shield, Bell as BellIcon, Palette, Database,
   Key, Globe, Mail, Server, AlertTriangle, CheckCircle2,
   Moon, Sun, Monitor, Smartphone, Tablet, Clock, DatabaseBackup,
-  Upload, Download, Trash2, RefreshCw, Eye, EyeOff, Plus, X
+  Upload, Download, Trash2, RefreshCw, Eye, EyeOff, Plus, X, GraduationCap
 } from 'lucide-react';
 
 const sidebarMenu = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
   { icon: FileQuestion, label: '题库管理', path: '/admin/questions' },
+  { icon: GraduationCap, label: '学科与等级', path: '/admin/curriculum' },
   { icon: Users, label: '用户管理', path: '/admin/users' },
   { icon: BookOpen, label: '知识手册', path: '/admin/handbook' },
   { icon: Bell, label: '每日一题', path: '/admin/daily' },
