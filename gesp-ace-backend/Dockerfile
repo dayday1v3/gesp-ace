@@ -7,7 +7,7 @@ RUN apk add --no-cache tini
 USER node
 
 COPY --chown=node:node package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 COPY --chown=node:node prisma ./prisma
 RUN npx prisma generate
