@@ -30,8 +30,14 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      // Only redirect when we're inside the admin area (hash starts with
+      // #/admin). The app uses HashRouter under base `/gesp-ace/` and there
+      // is no public `/login` route, so changing window.location.href would
+      // jump outside the SPA and trigger Vite's "did you mean /gesp-ace/login"
+      // overlay. Updating the hash keeps us inside the router.
+      const hash = window.location.hash || '';
+      if (hash.startsWith('#/admin') && hash !== '#/admin/login') {
+        window.location.hash = '#/admin/login';
       }
     }
     return Promise.reject(error.response?.data || error);
