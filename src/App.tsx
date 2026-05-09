@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -37,7 +37,7 @@ const Loading = () => (
 function App() {
   return (
     <Suspense fallback={<Loading />}>
-      <Router basename="/gesp-ace">
+      <HashRouter>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/daily" element={<Daily />} />
@@ -65,7 +65,7 @@ function App() {
           <Route path="/admin/daily" element={<AdminDaily />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
         </Routes>
-      </Router>
+      </HashRouter>
     </Suspense>
   );
 }
