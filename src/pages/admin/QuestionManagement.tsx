@@ -10,6 +10,7 @@ import {
   ChevronLeft, FileCheck, SplitSquareVertical, Menu, X as XIcon
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { RichTextEditor } from '../../components/ui/RichTextEditor';
 
 const sidebarMenu = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
@@ -785,12 +786,10 @@ export const QuestionManagement: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   题目内容 <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  value={editingForm.content}
-                  onChange={(e) => setEditingForm({ ...editingForm, content: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  rows={3}
-                  placeholder="请输入题目内容..."
+                <RichTextEditor
+                  content={editingForm.content}
+                  onChange={(content) => setEditingForm({ ...editingForm, content })}
+                  placeholder="请输入题目内容，支持粘贴图片..."
                 />
               </div>
 
