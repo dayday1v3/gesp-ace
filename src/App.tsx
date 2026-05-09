@@ -37,7 +37,7 @@ const Loading = () => (
 function App() {
   return (
     <Suspense fallback={<Loading />}>
-      <Router>
+      <Router basename="/gesp-ace">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/daily" element={<Daily />} />
