@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { practiceAPI, type StartPracticeResponse, type SubmitAnswerResponse } from '@/services/practice';
 
 export type QuestionType = 'choice' | 'judgment' | 'coding';
 
@@ -8,8 +9,10 @@ export interface Question {
   type: QuestionType;
   content: string;
   options?: string[];
-  correctAnswer: string;
-  knowledgePoint: string;
+  knowledgePoint?: {
+    code: string;
+    name: string;
+  };
   difficulty: 1 | 2 | 3;
   points: number;
   analysis?: string;
@@ -23,15 +26,19 @@ interface PracticeState {
   mistakes: Question[];
   favorites: string[];
   todayCompleted: boolean;
+  practiceId: string | null;
+  isLoading: boolean;
 
-  setDailyQuestions: (questions: Question[]) => void;
-  submitAnswer: (questionId: string, answer: string) => boolean;
+  fetchDailyQuestions: () => Promise<void>;
+  startPractice: (type: 'daily' | 'topic' | 'exam' | 'timed', targetLevel?: number) => Promise<void>;
+  submitAnswer: (questionId: string, answer: string) => Promise<SubmitAnswerResponse>;
   nextQuestion: () => void;
   resetDailyPractice: () => void;
   addToMistakes: (question: Question) => void;
   removeFromMistakes: (questionId: string) => void;
   toggleFavorite: (questionId: string) => void;
   markTodayCompleted: () => void;
+  completePractice: () => Promise<void>;
 }
 
 export const usePracticeStore = create<PracticeState>()(
@@ -41,56 +48,78 @@ export const usePracticeStore = create<PracticeState>()(
       dailyCompleted: 0,
       dailyAnswers: {},
       currentQuestionIndex: 0,
-      mistakes: [
-        {
-          id: 'm1',
-          type: 'choice',
-          content: '下列哪个选项不是C++的关键字？',
-          options: ['int', 'float', 'String', 'char'],
-          correctAnswer: 'String',
-          knowledgePoint: 'L1-T2',
-          difficulty: 1,
-          points: 2,
-          analysis: 'C++的关键字包括int、float、char等，而String不是C++关键字。',
-        },
-        {
-          id: 'm2',
-          type: 'judgment',
-          content: '在C++中，变量名可以包含数字。',
-          correctAnswer: 'true',
-          knowledgePoint: 'L1-T2',
-          difficulty: 1,
-          points: 2,
-          analysis: '变量名可以包含数字，但不能以数字开头。',
-        },
-      ],
+      mistakes: [],
       favorites: [],
       todayCompleted: false,
+      practiceId: null,
+      isLoading: false,
 
-      setDailyQuestions: (questions) =>
-        set({
-          dailyQuestions: questions,
-          currentQuestionIndex: 0,
-          dailyCompleted: 0,
-          dailyAnswers: {},
-        }),
+      fetchDailyQuestions: async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
 
-      submitAnswer: (questionId, answer) => {
-        const question = get().dailyQuestions.find((q) => q.id === questionId);
-        if (!question) return false;
+        set({ isLoading: true });
+        try {
+          const response = await practiceAPI.start({ type: 'daily' });
+          const data = response.data;
+          set({
+            dailyQuestions: data.questions,
+            practiceId: data.practiceId,
+            currentQuestionIndex: 0,
+            dailyCompleted: 0,
+            dailyAnswers: {},
+            isLoading: false,
+          });
+        } catch (error) {
+          set({ isLoading: false });
+          console.error('Failed to fetch daily questions:', error);
+        }
+      },
 
-        const isCorrect = answer === question.correctAnswer;
+      startPractice: async (type, targetLevel) => {
+        set({ isLoading: true });
+        try {
+          const response = await practiceAPI.start({
+            type,
+            targetLevel,
+            count: type === 'daily' ? 3 : 10,
+          });
+          const data = response.data;
+          set({
+            dailyQuestions: data.questions,
+            practiceId: data.practiceId,
+            currentQuestionIndex: 0,
+            dailyCompleted: 0,
+            dailyAnswers: {},
+            isLoading: false,
+          });
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      submitAnswer: async (questionId: string, answer: string) => {
+        const { practiceId, dailyQuestions } = get();
+        if (!practiceId) throw new Error('No active practice');
+
+        const response = await practiceAPI.submitAnswer({
+          practiceId,
+          questionId,
+          answer,
+        });
 
         set((state) => ({
           dailyAnswers: { ...state.dailyAnswers, [questionId]: answer },
           dailyCompleted: state.dailyCompleted + 1,
         }));
 
-        if (!isCorrect) {
+        const question = dailyQuestions.find((q) => q.id === questionId);
+        if (question && !response.data.isCorrect) {
           get().addToMistakes(question);
         }
 
-        return isCorrect;
+        return response.data;
       },
 
       nextQuestion: () =>
@@ -103,6 +132,7 @@ export const usePracticeStore = create<PracticeState>()(
           dailyCompleted: 0,
           dailyAnswers: {},
           currentQuestionIndex: 0,
+          practiceId: null,
         }),
 
       addToMistakes: (question) =>
@@ -126,9 +156,25 @@ export const usePracticeStore = create<PracticeState>()(
         })),
 
       markTodayCompleted: () => set({ todayCompleted: true }),
+
+      completePractice: async () => {
+        const { practiceId } = get();
+        if (!practiceId) return;
+
+        try {
+          await practiceAPI.complete(practiceId);
+          set({ todayCompleted: true, practiceId: null });
+        } catch (error) {
+          console.error('Failed to complete practice:', error);
+        }
+      },
     }),
     {
       name: 'gesp-practice-storage',
+      partialize: (state) => ({
+        todayCompleted: state.todayCompleted,
+        favorites: state.favorites,
+      }),
     }
   )
 );
