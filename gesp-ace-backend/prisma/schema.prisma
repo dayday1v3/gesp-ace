@@ -35,20 +35,44 @@ model User {
   @@map("users")
 }
 
+model Subject {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(20)
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  status      String   @default("active") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  levels      Level[]
+
+  @@map("subjects")
+}
+
 model Level {
   id                 Int                @id @default(autoincrement())
-  level              Int                @unique
+  subjectId          Int                @map("subject_id")
+  level              Int
   name               String             @db.VarChar(100)
   description        String?            @db.Text
+  stage              String?            @db.VarChar(20)
+  icon               String?            @db.VarChar(20)
+  color              String?            @db.VarChar(120)
+  sortOrder          Int                @default(0) @map("sort_order")
   unlockRequirement  Decimal            @default(0) @map("unlock_requirement") @db.Decimal(3, 2)
   status             String             @default("locked") @db.VarChar(20)
   createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
 
+  subject            Subject            @relation(fields: [subjectId], references: [id])
   questions          Question[]
   knowledgePoints    KnowledgePoint[]
   handbooks          Handbook[]
   userProgress       UserLevelProgress[]
 
+  @@unique([subjectId, level])
+  @@index([subjectId])
   @@map("levels")
 }
 

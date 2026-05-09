@@ -1,25 +1,30 @@
 -- Initialize database with default data
 
--- Insert levels
-INSERT INTO levels (level, name, description, unlock_requirement, status) VALUES
-(1, '编程入门', '掌握基本的编程概念和 C++ 入门知识', 0, 'unlocked'),
-(2, '程序基础设计', '掌握程序设计语言的特点和基础算法思想', 0.80, 'locked'),
-(3, '数据编码+基础算法', '掌握数据编码、进制转换和基础算法', 0.80, 'locked'),
-(4, '函数+排序+文件', '掌握函数、排序算法和文件操作', 0.80, 'locked'),
-(5, '数论+链表+二分', '掌握数论、链表和二分查找', 0.80, 'locked'),
-(6, '树+搜索+动态规划', '掌握树结构、搜索算法和动态规划', 0.80, 'locked'),
-(7, '图论初步', '掌握图的基本概念和常见算法', 0.80, 'locked'),
-(8, '高级算法', '掌握高级算法和数据结构', 0.80, 'locked')
-ON CONFLICT (level) DO NOTHING;
+-- Default subjects (extend later: CSP-J / CSP-S / NOIP)
+INSERT INTO subjects (code, name, description, sort_order, status, updated_at) VALUES
+('GESP', 'GESP 等级考试', 'CCF GESP 通用计算机能力等级考试', 1, 'active', NOW())
+ON CONFLICT (code) DO NOTHING;
 
--- Insert knowledge points for Level 1
+-- Insert default GESP levels (subject_id resolved via lookup)
+INSERT INTO levels (subject_id, level, name, description, stage, icon, color, sort_order, unlock_requirement, status, updated_at) VALUES
+((SELECT id FROM subjects WHERE code = 'GESP'), 1, '编程入门', '掌握基本的编程概念和 C++ 入门知识', '小学', '🌱', 'from-emerald-500 to-teal-500', 1, 0, 'unlocked', NOW()),
+((SELECT id FROM subjects WHERE code = 'GESP'), 2, '程序基础设计', '掌握程序设计语言的特点和基础算法思想', '小学', '🌿', 'from-teal-500 to-cyan-500', 2, 0.80, 'locked', NOW()),
+((SELECT id FROM subjects WHERE code = 'GESP'), 3, '数据编码+基础算法', '掌握数据编码、进制转换和基础算法', '小学', '🌳', 'from-cyan-500 to-blue-500', 3, 0.80, 'locked', NOW()),
+((SELECT id FROM subjects WHERE code = 'GESP'), 4, '函数+排序+文件', '掌握函数、排序算法和文件操作', '初中', '📚', 'from-blue-500 to-indigo-500', 4, 0.80, 'locked', NOW()),
+((SELECT id FROM subjects WHERE code = 'GESP'), 5, '数论+链表+二分', '掌握数论、链表和二分查找', '初中', '💡', 'from-indigo-500 to-purple-500', 5, 0.80, 'locked', NOW()),
+((SELECT id FROM subjects WHERE code = 'GESP'), 6, '树+搜索+动态规划', '掌握树结构、搜索算法和动态规划', '初中', '🔮', 'from-purple-500 to-pink-500', 6, 0.80, 'locked', NOW()),
+((SELECT id FROM subjects WHERE code = 'GESP'), 7, '图论初步', '掌握图的基本概念和常见算法', '高中', '🚀', 'from-pink-500 to-orange-500', 7, 0.80, 'locked', NOW()),
+((SELECT id FROM subjects WHERE code = 'GESP'), 8, '高级算法', '掌握高级算法和数据结构', '高中', '🏆', 'from-orange-500 to-red-500', 8, 0.80, 'locked', NOW())
+ON CONFLICT (subject_id, level) DO NOTHING;
+
+-- Insert knowledge points for GESP Level 1 (level_id resolved via lookup)
 INSERT INTO knowledge_points (code, name, level_id, sort_order) VALUES
-('L1-T1', '计算机基础与编程环境', 1, 1),
-('L1-T2', '变量定义与使用', 1, 2),
-('L1-T3', '基本数据类型', 1, 3),
-('L1-T4', '运算符与表达式', 1, 4),
-('L1-T5', '控制语句结构', 1, 5),
-('L1-T6', '输入输出语句', 1, 6)
+('L1-T1', '计算机基础与编程环境', (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1), 1),
+('L1-T2', '变量定义与使用',       (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1), 2),
+('L1-T3', '基本数据类型',         (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1), 3),
+('L1-T4', '运算符与表达式',       (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1), 4),
+('L1-T5', '控制语句结构',         (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1), 5),
+('L1-T6', '输入输出语句',         (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1), 6)
 ON CONFLICT (code) DO NOTHING;
 
 -- Insert achievements
@@ -35,7 +40,7 @@ INSERT INTO achievements (id, name, description, icon, condition_type, condition
 ('perfect_day', '完美一天', '每日一练全对', '💯', 'daily_perfect', 1)
 ON CONFLICT (id) DO NOTHING;
 
--- Insert sample questions
+-- Insert sample questions (level_id resolved against GESP)
 INSERT INTO questions (id, type, content, options, answer, analysis, difficulty, points, level_id, knowledge_point_id, year, season, test_cases) VALUES
 (
   'q001',
@@ -46,7 +51,7 @@ INSERT INTO questions (id, type, content, options, answer, analysis, difficulty,
   '变量名的命名规则：必须以字母或下划线开头（不能是数字）；不能包含特殊字符如"-"；不能使用关键字如"class"。因此B选项"_name"是正确的。',
   1,
   2,
-  1,
+  (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1),
   (SELECT id FROM knowledge_points WHERE code = 'L1-T2'),
   2024,
   '春季',
@@ -61,7 +66,7 @@ INSERT INTO questions (id, type, content, options, answer, analysis, difficulty,
   '在C++中，除了结构控制语句的末尾（如if、while等），其他语句确实需要以分号结束。但结构控制语句本身不需要分号。',
   1,
   2,
-  1,
+  (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1),
   (SELECT id FROM knowledge_points WHERE code = 'L1-T6'),
   2024,
   '春季',
@@ -83,7 +88,7 @@ int main() {
   '这道题需要先读取输入的整数，然后将这个整数乘以2并输出。',
   1,
   25,
-  1,
+  (SELECT l.id FROM levels l JOIN subjects s ON s.id = l.subject_id WHERE s.code = 'GESP' AND l.level = 1),
   (SELECT id FROM knowledge_points WHERE code = 'L1-T6'),
   2024,
   '春季',
