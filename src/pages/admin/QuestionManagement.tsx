@@ -1,0 +1,417 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard, Users, BookOpen, FileQuestion, Settings, Bell,
+  Search, Filter, Plus, Edit, Trash2, Eye, MoreVertical,
+  ChevronDown, CheckCircle2, XCircle, LogOut, ChevronRight,
+  Book, Trophy, Target, Clock, TrendingUp
+} from 'lucide-react';
+
+const sidebarMenu = [
+  { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
+  { icon: FileQuestion, label: '题库管理', path: '/admin/questions' },
+  { icon: Users, label: '用户管理', path: '/admin/users' },
+  { icon: BookOpen, label: '知识手册', path: '/admin/handbook' },
+  { icon: Bell, label: '每日一题', path: '/admin/daily' },
+  { icon: Settings, label: '系统设置', path: '/admin/settings' },
+];
+
+const GESP_LEVELS = [
+  { level: 1, name: '一级', stage: '小学', description: '图形化编程基础', color: 'from-emerald-500 to-teal-500', icon: '🌱', questionCount: 456 },
+  { level: 2, name: '二级', stage: '小学', description: '图形化编程进阶', color: 'from-teal-500 to-cyan-500', icon: '🌿', questionCount: 389 },
+  { level: 3, name: '三级', stage: '小学', description: '图形化编程拓展', color: 'from-cyan-500 to-blue-500', icon: '🌳', questionCount: 312 },
+  { level: 4, name: '四级', stage: '初中', description: 'Python/C++入门', color: 'from-blue-500 to-indigo-500', icon: '📚', questionCount: 445 },
+  { level: 5, name: '五级', stage: '初中', description: 'Python/C++进阶', color: 'from-indigo-500 to-purple-500', icon: '💡', questionCount: 398 },
+  { level: 6, name: '六级', stage: '初中', description: 'Python/C++数据结构', color: 'from-purple-500 to-pink-500', icon: '🔮', questionCount: 356 },
+  { level: 7, name: '七级', stage: '高中', description: 'C++算法基础', color: 'from-pink-500 to-orange-500', icon: '🚀', questionCount: 289 },
+  { level: 8, name: '八级', stage: '高中', description: 'C++算法竞赛', color: 'from-orange-500 to-red-500', icon: '🏆', questionCount: 122 },
+];
+
+export const QuestionManagement: React.FC = () => {
+  const navigate = useNavigate();
+  const [activeLevel, setActiveLevel] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const questions = [
+    {
+      id: 'q001',
+      content: '在C++中，以下哪个是合法的变量名？',
+      type: 'choice',
+      difficulty: 1,
+      knowledgePoint: '变量定义',
+      accuracy: 0.85,
+      usedCount: 234,
+      status: 'active',
+      createdAt: '2024-01-15'
+    },
+    {
+      id: 'q002',
+      content: 'C++中，所有语句都必须以分号结束。',
+      type: 'judgment',
+      difficulty: 1,
+      knowledgePoint: '语法基础',
+      accuracy: 0.92,
+      usedCount: 189,
+      status: 'active',
+      createdAt: '2024-01-14'
+    },
+    {
+      id: 'q003',
+      content: '请编写一个程序，输出 Hello World',
+      type: 'coding',
+      difficulty: 2,
+      knowledgePoint: '输入输出',
+      accuracy: 0.68,
+      usedCount: 156,
+      status: 'active',
+      createdAt: '2024-01-13'
+    },
+    {
+      id: 'q004',
+      content: '下列哪个选项不是C++的关键字？',
+      type: 'choice',
+      difficulty: 1,
+      knowledgePoint: '关键字',
+      accuracy: 0.45,
+      usedCount: 98,
+      status: 'active',
+      createdAt: '2024-01-12'
+    },
+  ];
+
+  const typeLabels: Record<string, { label: string; color: string; bgColor: string }> = {
+    choice: { label: '单选题', color: 'text-blue-600', bgColor: 'bg-blue-500/10' },
+    judgment: { label: '判断题', color: 'text-green-600', bgColor: 'bg-green-500/10' },
+    coding: { label: '编程题', color: 'text-purple-600', bgColor: 'bg-purple-500/10' },
+  };
+
+  const difficultyLabels: Record<number, { label: string; color: string }> = {
+    1: { label: '简单', color: 'text-green-600 bg-green-500/10' },
+    2: { label: '中等', color: 'text-yellow-600 bg-yellow-500/10' },
+    3: { label: '困难', color: 'text-red-600 bg-red-500/10' },
+  };
+
+  const currentLevelInfo = GESP_LEVELS.find(l => l.level === activeLevel)!;
+  const totalQuestions = GESP_LEVELS.reduce((sum, l) => sum + l.questionCount, 0);
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🎯</span>
+            <div>
+              <h2 className="font-bold text-gray-900">GESP Ace</h2>
+              <p className="text-xs text-gray-500">管理后台</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-1">
+          {sidebarMenu.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                item.label === '题库管理'
+                  ? 'bg-primary text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-gray-200">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition-all">
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">退出登录</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto">
+        <header className="bg-white border-b border-gray-200 px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">题库管理</h1>
+              <p className="text-gray-500 text-sm">共 {totalQuestions.toLocaleString()} 道题目，覆盖 GESP 全部8个等级</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                添加题目
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="p-8 space-y-6">
+          {/* Level Cards */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Book className="w-5 h-5 text-primary" />
+              选择题库等级
+            </h3>
+            <div className="grid grid-cols-4 gap-4">
+              {GESP_LEVELS.map((level) => (
+                <motion.button
+                  key={level.level}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setActiveLevel(level.level)}
+                  className={`relative p-4 rounded-2xl border-2 transition-all overflow-hidden ${
+                    activeLevel === level.level
+                      ? 'border-primary bg-primary/5 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${level.color} opacity-5`} />
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">{level.icon}</span>
+                      <span className={`text-lg font-bold ${
+                        activeLevel === level.level ? 'text-primary' : 'text-gray-700'
+                      }`}>
+                        {level.name}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-1">{level.stage}</p>
+                    <p className="text-sm text-gray-600 mb-3">{level.description}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500">
+                        {level.questionCount} 题
+                      </span>
+                      {activeLevel === level.level && (
+                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                      )}
+                    </div>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Level Statistics */}
+          <div className="grid grid-cols-4 gap-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-blue-500/10 rounded-xl">
+                  <Book className="w-5 h-5 text-blue-600" />
+                </div>
+                <span className="text-sm text-gray-500">题目总数</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{currentLevelInfo.questionCount}</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-green-500/10 rounded-xl">
+                  <Target className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm text-gray-500">平均正确率</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">72.5%</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-purple-500/10 rounded-xl">
+                  <TrendingUp className="w-5 h-5 text-purple-600" />
+                </div>
+                <span className="text-sm text-gray-500">本周新增</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">+28</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-orange-500/10 rounded-xl">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                </div>
+                <span className="text-sm text-gray-500">使用次数</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">1,234</p>
+            </motion.div>
+          </div>
+
+          {/* Filters */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="搜索题目内容..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="all">全部类型</option>
+                <option value="choice">单选题</option>
+                <option value="judgment">判断题</option>
+                <option value="coding">编程题</option>
+              </select>
+
+              <button className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                更多筛选
+              </button>
+            </div>
+          </div>
+
+          {/* Questions Table */}
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">
+                {currentLevelInfo.icon} {currentLevelInfo.name} - 题目列表
+              </h3>
+              <span className="text-sm text-gray-500">
+                共 {currentLevelInfo.questionCount} 道题目
+              </span>
+            </div>
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">题目内容</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">类型</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">难度</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">知识点</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">正确率</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">使用次数</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">状态</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {questions.map((question) => (
+                  <motion.tr
+                    key={question.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-900 line-clamp-2 max-w-md">
+                        {question.content}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        添加于 {question.createdAt}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${typeLabels[question.type].bgColor} ${typeLabels[question.type].color}`}>
+                        {typeLabels[question.type].label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${difficultyLabels[question.difficulty].color}`}>
+                        {difficultyLabels[question.difficulty].label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{question.knowledgePoint}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-full rounded-full ${
+                              question.accuracy >= 0.7 ? 'bg-green-500' :
+                              question.accuracy >= 0.5 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${question.accuracy * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-gray-600">{Math.round(question.accuracy * 100)}%</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{question.usedCount}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        question.status === 'active'
+                          ? 'bg-green-500/10 text-green-600'
+                          : 'bg-gray-500/10 text-gray-600'
+                      }`}>
+                        {question.status === 'active' ? '启用' : '禁用'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="预览">
+                          <Eye className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="编辑">
+                          <Edit className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <button className="p-2 hover:bg-red-50 rounded-lg transition-colors" title="删除">
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm">
+            <p className="text-sm text-gray-600">
+              显示 1-4 条，共 {currentLevelInfo.questionCount} 条
+            </p>
+            <div className="flex items-center gap-2">
+              <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
+                上一页
+              </button>
+              <button className="px-3 py-1 bg-primary text-white rounded-lg">1</button>
+              <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">2</button>
+              <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">3</button>
+              <span className="px-2 text-gray-400">...</span>
+              <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
+                {Math.ceil(currentLevelInfo.questionCount / 10)}
+              </button>
+              <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50">
+                下一页
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
