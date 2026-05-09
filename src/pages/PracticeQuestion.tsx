@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Clock, Trophy, Lightbulb,
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CodeEditor } from '@/components/ui/CodeEditor';
 import { Header } from '@/components/layout/Header';
 
 interface Question {
@@ -317,22 +318,13 @@ export const PracticeQuestion: React.FC = () => {
                 )}
 
                 {currentQuestion.type === 'program' && (
-                  <div className="bg-gray-900 rounded-xl p-4 text-gray-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-400">请在下方编写代码</span>
-                      <span className="text-xs text-gray-500">C++</span>
-                    </div>
-                    <textarea
-                      className="w-full h-64 bg-gray-800 rounded-lg p-4 text-sm font-mono text-green-400 resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      placeholder="// 请输入你的代码..."
-                      disabled={showResult}
-                    />
-                    {showResult && (
-                      <div className="mt-4 p-4 bg-green-900/30 rounded-lg">
-                        <p className="text-green-400 text-sm">✓ 代码已提交（演示模式）</p>
-                      </div>
-                    )}
-                  </div>
+                  <CodeEditor
+                    value={selectedAnswer as string || ''}
+                    onChange={(value) => !showResult && setSelectedAnswer(value)}
+                    disabled={showResult}
+                    language="cpp"
+                    height="280px"
+                  />
                 )}
 
                 <AnimatePresence>
