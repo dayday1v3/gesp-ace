@@ -55,91 +55,168 @@ export class QuestionService {
     return result;
   }
 
+  /**
+   * Pick today's three questions (one of each type) using a layered strategy:
+   *   1. Unmastered mistakes the user already has for that type (review-first).
+   *   2. Questions on the user's weak knowledge points (knowledgePoints with
+   *      pending unmastered mistakes), preferring lower-than-current levels too.
+   *   3. Fallback: an unanswered (or rarely-answered) question at the user's
+   *      currentLevel — the original behaviour.
+   * Within slots we deduplicate against questions chosen in this batch and
+   * questions the user has answered in the last 7 days.
+   */
   private async fetchDailyQuestions(userId: string) {
+    const today = getDateString();
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { currentLevel: true },
     });
-
     const targetLevel = user?.currentLevel || 1;
 
-    const questions = await prisma.$transaction(async (tx) => {
-      const choiceQuestion = await tx.question.findFirst({
-        where: {
-          levelId: targetLevel,
-          type: 'choice',
-          status: 'active',
-        },
-        orderBy: {
-          answers: {
-            _count: 'asc',
-          },
-        },
-        include: {
-          knowledgePoint: {
-            select: {
-              code: true,
-              name: true,
-            },
-          },
-        },
-      });
-
-      const judgmentQuestion = await tx.question.findFirst({
-        where: {
-          levelId: targetLevel,
-          type: 'judgment',
-          status: 'active',
-        },
-        orderBy: {
-          answers: {
-            _count: 'asc',
-          },
-        },
-        include: {
-          knowledgePoint: {
-            select: {
-              code: true,
-              name: true,
-            },
-          },
-        },
-      });
-
-      const codingQuestion = await tx.question.findFirst({
-        where: {
-          levelId: targetLevel,
-          type: 'coding',
-          status: 'active',
-        },
-        orderBy: {
-          answers: {
-            _count: 'asc',
-          },
-        },
-        include: {
-          knowledgePoint: {
-            select: {
-              code: true,
-              name: true,
-            },
-          },
-        },
-      });
-
-      return [choiceQuestion, judgmentQuestion, codingQuestion].filter(Boolean);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recent = await prisma.answer.findMany({
+      where: {
+        practice: { userId },
+        submittedAt: { gte: sevenDaysAgo },
+        userAnswer: { not: null },
+      },
+      select: { questionId: true },
     });
+    const recentIds = Array.from(new Set(recent.map((a) => a.questionId)));
+
+    const mistakes = await prisma.mistake.findMany({
+      where: { userId, mastered: false },
+      include: {
+        question: {
+          include: {
+            knowledgePoint: { select: { code: true, name: true } },
+          },
+        },
+      },
+      orderBy: [
+        { errorCount: 'desc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    const activeMistakes = mistakes.filter((m) => m.question.status === 'active');
+    const mistakeByType: Record<string, (typeof activeMistakes)[number]['question'] | undefined> = {};
+    for (const m of activeMistakes) {
+      const type = m.question.type as unknown as string;
+      if (!mistakeByType[type]) {
+        mistakeByType[type] = m.question;
+      }
+    }
+
+    const weakKnowledgePointIds = Array.from(
+      new Set(
+        activeMistakes
+          .map((m) => m.question.knowledgePointId)
+          .filter((id): id is number => typeof id === 'number'),
+      ),
+    );
+
+    type QuestionWithKp = {
+      id: string;
+      type: QuestionType;
+      content: string;
+      options: unknown;
+      difficulty: number;
+      points: number;
+      status: string;
+      knowledgePoint: { code: string; name: string } | null;
+    };
+
+    const types: Array<QuestionType> = [QuestionType.choice, QuestionType.judgment, QuestionType.coding];
+    const chosen: Array<{ question: QuestionWithKp; source: 'mistake' | 'weak' | 'level' }> = [];
+    const chosenIds = new Set<string>();
+
+    const includeKp = {
+      knowledgePoint: { select: { code: true, name: true } },
+    };
+
+    for (const type of types) {
+      let picked: QuestionWithKp | null = null;
+      let source: 'mistake' | 'weak' | 'level' = 'level';
+
+      const mistakeQ = mistakeByType[type as unknown as string];
+      if (mistakeQ && !chosenIds.has(mistakeQ.id)) {
+        picked = mistakeQ as unknown as QuestionWithKp;
+        source = 'mistake';
+      }
+
+      if (!picked && weakKnowledgePointIds.length > 0) {
+        const excludeIds = Array.from(new Set([...chosenIds, ...recentIds]));
+        const found = await prisma.question.findFirst({
+          where: {
+            type,
+            status: 'active',
+            knowledgePointId: { in: weakKnowledgePointIds },
+            levelId: { lte: targetLevel },
+            id: { notIn: excludeIds },
+          },
+          orderBy: { answers: { _count: 'asc' } },
+          include: includeKp,
+        });
+        if (found) {
+          picked = found as unknown as QuestionWithKp;
+          source = 'weak';
+        }
+      }
+
+      if (!picked) {
+        const excludeIds = Array.from(new Set([...chosenIds, ...recentIds]));
+        const found = await prisma.question.findFirst({
+          where: {
+            type,
+            status: 'active',
+            levelId: targetLevel,
+            id: { notIn: excludeIds },
+          },
+          orderBy: { answers: { _count: 'asc' } },
+          include: includeKp,
+        });
+        if (found) {
+          picked = found as unknown as QuestionWithKp;
+          source = 'level';
+        }
+      }
+
+      // Last-resort: relax the "not recently answered" filter so the slot is filled.
+      if (!picked) {
+        const found = await prisma.question.findFirst({
+          where: {
+            type,
+            status: 'active',
+            levelId: targetLevel,
+            id: { notIn: Array.from(chosenIds) },
+          },
+          orderBy: { answers: { _count: 'asc' } },
+          include: includeKp,
+        });
+        if (found) {
+          picked = found as unknown as QuestionWithKp;
+          source = 'level';
+        }
+      }
+
+      if (picked) {
+        chosen.push({ question: picked, source });
+        chosenIds.add(picked.id);
+      }
+    }
 
     return {
       date: today,
-      questions: questions.map((q) => ({
-        id: q!.id,
-        type: q!.type,
-        content: q!.content,
-        options: q!.options,
-        knowledgePoint: q!.knowledgePoint,
-        difficulty: q!.difficulty,
-        points: q!.points,
+      questions: chosen.map(({ question, source }) => ({
+        id: question.id,
+        type: question.type,
+        content: question.content,
+        options: question.options,
+        knowledgePoint: question.knowledgePoint,
+        difficulty: question.difficulty,
+        points: question.points,
+        source,
       })),
     };
   }
