@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String              @id @default(uuid())
+  username           String              @unique @db.VarChar(50)
+  password           String              @db.VarChar(255)
+  email              String?             @unique @db.VarChar(100)
+  avatar             String              @default("/avatars/default.png") @db.VarChar(500)
+  currentLevel       Int                 @default(1)
+  totalScore         Int                 @default(0)
+  streakDays         Int                 @default(0)
+  totalPracticeDays  Int                 @default(0)
+  examDate           DateTime?           @db.Date
+  lastPracticeDate   DateTime?           @db.Date
+  role               String              @default("student") @db.VarChar(20)
+  status             String              @default("active") @db.VarChar(20)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  practices          Practice[]
+  mistakes           Mistake[]
+  favorites          Favorite[]
+  achievements       UserAchievement[]
+  handbookReads      HandbookRead[]
+  reports            Report[]
+  levelProgress      UserLevelProgress[]
+
+  @@map("users")
+}
+
+model Level {
+  id                 Int                @id @default(autoincrement())
+  level              Int                @unique
+  name               String             @db.VarChar(100)
+  description        String?            @db.Text
+  unlockRequirement  Decimal            @default(0) @map("unlock_requirement") @db.Decimal(3, 2)
+  status             String             @default("locked") @db.VarChar(20)
+  createdAt          DateTime           @default(now()) @map("created_at")
+
+  questions          Question[]
+  knowledgePoints    KnowledgePoint[]
+  handbooks          Handbook[]
+  userProgress       UserLevelProgress[]
+
+  @@map("levels")
+}
+
+model KnowledgePoint {
+  id                 Int                @id @default(autoincrement())
+  code               String             @unique @db.VarChar(20)
+  name               String             @db.VarChar(100)
+  description        String?            @db.Text
+  levelId            Int                @map("level_id")
+  parentId           Int?               @map("parent_id")
+  sortOrder          Int                @default(0) @map("sort_order")
+  createdAt          DateTime           @default(now()) @map("created_at")
+
+  level              Level              @relation(fields: [levelId], references: [id])
+  parent             KnowledgePoint?     @relation("KnowledgePointHierarchy", fields: [parentId], references: [id])
+  children           KnowledgePoint[]    @relation("KnowledgePointHierarchy")
+  questions          Question[]
+
+  @@map("knowledge_points")
+}
+
+model Question {
+  id                 String              @id @default(uuid())
+  type               QuestionType        @map("type")
+  content            String              @db.Text
+  options            Json?
+  answer             String              @db.Text
+  analysis           String?             @db.Text
+  difficulty         Int                 @default(1)
+  points             Int                 @default(2)
+  levelId            Int                 @map("level_id")
+  knowledgePointId   Int?                @map("knowledge_point_id")
+  year               Int?
+  season             String?             @db.VarChar(10)
+  source             String?             @db.VarChar(50)
+  testCases          Json?
+  timeLimit          Int                 @default(1000) @map("time_limit")
+  memoryLimit        Int                 @default(256) @map("memory_limit")
+  status             String              @default("active") @db.VarChar(20)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  level              Level               @relation(fields: [levelId], references: [id])
+  knowledgePoint     KnowledgePoint?      @relation(fields: [knowledgePointId], references: [id])
+  answers            Answer[]
+  mistakes           Mistake[]
+  favorites          Favorite[]
+
+  @@index([levelId])
+  @@index([knowledgePointId])
+  @@index([type])
+  @@index([difficulty])
+  @@map("questions")
+}
+
+enum QuestionType {
+  choice
+  judgment
+  coding
+}
+
+model Practice {
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  type               PracticeType        @map("type")
+  status             String              @default("in_progress") @db.VarChar(20)
+  targetLevel        Int?                @map("target_level")
+  targetKnowledge    String?             @map("target_knowledge")
+  startedAt          DateTime            @default(now()) @map("started_at")
+  completedAt        DateTime?           @map("completed_at")
+  totalScore         Int                 @default(0) @map("total_score")
+  correctCount       Int                 @default(0) @map("correct_count")
+  wrongCount         Int                 @default(0) @map("wrong_count")
+  timeSpent          Int                 @default(0) @map("time_spent")
+
+  user               User                @relation(fields: [userId], references: [id])
+  answers            Answer[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([startedAt])
+  @@map("practices")
+}
+
+enum PracticeType {
+  daily
+  topic
+  exam
+  timed
+}
+
+model Answer {
+  id                 String              @id @default(uuid())
+  practiceId         String              @map("practice_id")
+  questionId         String              @map("question_id")
+  userAnswer         String?             @map("user_answer") @db.Text
+  isCorrect          Boolean             @default(false) @map("is_correct")
+  score              Int                 @default(0)
+  timeSpent          Int                 @default(0) @map("time_spent")
+  submittedAt        DateTime            @default(now()) @map("submitted_at")
+
+  practice           Practice            @relation(fields: [practiceId], references: [id])
+  question           Question            @relation(fields: [questionId], references: [id])
+
+  @@index([practiceId])
+  @@index([questionId])
+  @@map("answers")
+}
+
+model Mistake {
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  questionId         String              @map("question_id")
+  errorType          String?             @map("error_type") @db.VarChar(50)
+  errorCount         Int                 @default(1) @map("error_count")
+  lastReviewedAt     DateTime?           @map("last_reviewed_at")
+  mastered           Boolean             @default(false)
+  createdAt          DateTime            @default(now()) @map("created_at")
+
+  user               User                @relation(fields: [userId], references: [id])
+  question           Question            @relation(fields: [questionId], references: [id])
+
+  @@unique([userId, questionId])
+  @@index([userId])
+  @@index([userId, mastered])
+  @@map("mistakes")
+}
+
+model Favorite {
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  questionId         String              @map("question_id")
+  createdAt          DateTime            @default(now()) @map("created_at")
+
+  user               User                @relation(fields: [userId], references: [id])
+  question           Question            @relation(fields: [questionId], references: [id])
+
+  @@unique([userId, questionId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+model Achievement {
+  id                 String              @id @map("id")
+  name               String              @db.VarChar(100)
+  description        String?             @db.Text
+  icon               String?             @db.VarChar(100)
+  conditionType      String?             @map("condition_type") @db.VarChar(30)
+  conditionValue     Int?                @map("condition_value")
+  createdAt          DateTime            @default(now()) @map("created_at")
+
+  userAchievements   UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  achievementId      String              @map("achievement_id")
+  earnedAt           DateTime            @default(now()) @map("earned_at")
+
+  user               User                @relation(fields: [userId], references: [id])
+  achievement        Achievement          @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Handbook {
+  id                 String              @id @default(uuid())
+  levelId            Int                 @map("level_id")
+  title              String              @db.VarChar(200)
+  content            String?             @db.Text
+  feishuUrl          String?             @map("feishu_url") @db.VarChar(500)
+  status             String              @default("active") @db.VarChar(20)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  level              Level               @relation(fields: [levelId], references: [id])
+  handbookReads      HandbookRead[]
+
+  @@map("handbooks")
+}
+
+model HandbookRead {
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  handbookId         String              @map("handbook_id")
+  readStatus         String              @default("unread") @map("read_status") @db.VarChar(20)
+  lastPosition       Json?               @map("last_position")
+  updatedAt          DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  user               User                @relation(fields: [userId], references: [id])
+  handbook           Handbook            @relation(fields: [handbookId], references: [id])
+
+  @@unique([userId, handbookId])
+  @@map("handbook_reads")
+}
+
+model Report {
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  type               String              @map("type") @db.VarChar(20)
+  period             String?             @map("period") @db.VarChar(20)
+  startDate          DateTime?           @map("start_date") @db.Date
+  endDate            DateTime?           @map("end_date") @db.Date
+  data               Json?
+  createdAt          DateTime            @default(now()) @map("created_at")
+
+  user               User                @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, type])
+  @@map("reports")
+}
+
+model UserLevelProgress {
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  levelId            Int                 @map("level_id")
+  correctCount       Int                 @default(0) @map("correct_count")
+  totalCount         Int                 @default(0) @map("total_count")
+  correctRate        Decimal             @default(0) @map("correct_rate") @db.Decimal(5, 4)
+  knowledgeProgress  Json                @default("{}") @map("knowledge_progress")
+  status             String              @default("in_progress") @db.VarChar(20)
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  user               User                @relation(fields: [userId], references: [id])
+  level              Level               @relation(fields: [levelId], references: [id])
+
+  @@unique([userId, levelId])
+  @@index([userId, levelId])
+  @@map("user_level_progress")
+}

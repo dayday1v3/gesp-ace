@@ -1,0 +1,170 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gesp-ace-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gespace}?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JUDGE0_URL=http://judge0:2358
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-env}
+      - JWT_EXPIRES_IN=2h
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5173}
+      - LOG_LEVEL=info
+      - PORT=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      judge0:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - gesp-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: gesp-postgres
+    # Required for Prisma/psql on the host. If Windows port 5432 is taken, change to "5433:5432" and use localhost:5433 in DATABASE_URL.
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-gespace}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./prisma/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: gesp-redis
+    # Host Node app uses REDIS_URL=redis://localhost:6379 from .env
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+  # Official Judge0 CE stack (judge0ce/judge0 on Docker Hub is not available).
+  # Docs: https://github.com/judge0/judge0 — server + workers + db + redis.
+  judge0:
+    image: judge0/judge0:1.13.1
+    container_name: gesp-judge0
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    ports:
+      - "2358:2358"
+    privileged: true
+    command: ["./scripts/server"]
+    ulimits:
+      nproc: 100
+      nofile: 20000
+    depends_on:
+      judge0-db:
+        condition: service_started
+      judge0-redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:2358/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    container_name: gesp-judge0-workers
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    command: ["./scripts/workers"]
+    depends_on:
+      judge0-db:
+        condition: service_started
+      judge0-redis:
+        condition: service_started
+      judge0:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+  judge0-db:
+    image: postgres:16.2
+    container_name: gesp-judge0-db
+    env_file:
+      - judge0.conf
+    volumes:
+      - judge0_postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+  judge0-redis:
+    image: redis:7.2.4
+    container_name: gesp-judge0-redis
+    env_file:
+      - judge0.conf
+    command:
+      [
+        "bash",
+        "-c",
+        'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"',
+      ]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - gesp-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  judge0_postgres_data:
+    driver: local
+
+networks:
+  gesp-network:
+    driver: bridge
