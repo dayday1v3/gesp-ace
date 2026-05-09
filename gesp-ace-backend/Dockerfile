@@ -4,6 +4,8 @@ WORKDIR /app
 
 RUN apk add --no-cache tini
 
+RUN chown node:node /app
+
 USER node
 
 COPY --chown=node:node package*.json ./
