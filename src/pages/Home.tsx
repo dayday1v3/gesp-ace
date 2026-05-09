@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, BookOpen, FileWarning, Brain, TrendingUp, FileText } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
@@ -6,23 +7,31 @@ import { DailyPracticeBanner } from '@/components/common/DailyPracticeBanner';
 import { Card } from '@/components/ui/Card';
 import { useUserStore } from '@/stores/userStore';
 import { usePracticeStore } from '@/stores/practiceStore';
+import { useCurriculumStore } from '@/stores/curriculumStore';
 import { useNavigate } from 'react-router-dom';
-
-const levelNames = [
-  '编程入门',
-  '程序基础设计',
-  '数据编码+基础算法',
-  '函数+排序+文件',
-  '数论+链表+二分',
-  '树+搜索+动态规划',
-  '图论初步',
-  '高级算法',
-];
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { username, streakDays, levelProgress, examDate } = useUserStore();
   const { mistakes, todayCompleted, dailyQuestions } = usePracticeStore();
+
+  const {
+    subjects,
+    levels,
+    currentSubjectId,
+    loaded: curriculumLoaded,
+    fetchSubjects,
+    fetchLevels,
+    setCurrentSubject,
+  } = useCurriculumStore();
+
+  useEffect(() => {
+    if (subjects.length === 0) fetchSubjects();
+  }, [subjects.length, fetchSubjects]);
+
+  useEffect(() => {
+    if (currentSubjectId) fetchLevels(currentSubjectId);
+  }, [currentSubjectId, fetchLevels]);
 
   const remainingQuestions = dailyQuestions.length > 0 
     ? Math.max(0, dailyQuestions.length - Object.keys(usePracticeStore.getState().dailyAnswers).length)
@@ -140,40 +149,70 @@ export const Home: React.FC = () => {
         </motion.div>
 
         <section>
-          <motion.h2
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-xl font-bold text-text-primary mb-4"
-          >
-            📊 等级进度
-          </motion.h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((level, index) => {
-              const progress = levelProgress[level] || {
-                correctRate: 0,
-                practicedCount: 0,
-                status: 'locked' as const,
-              };
-              
-              let shouldUnlock = true;
-              if (level > 1) {
-                const prevProgress = levelProgress[level - 1];
-                shouldUnlock = prevProgress?.correctRate >= 0.8;
-              }
-
-              return (
-                <LevelCard
-                  key={level}
-                  level={level}
-                  name={levelNames[level - 1]}
-                  progress={progress.correctRate}
-                  status={shouldUnlock ? progress.status : 'locked'}
-                  index={index}
-                  onClick={() => navigate(`/practice/${level}`)}
-                />
-              );
-            })}
+          <div className="flex items-end justify-between mb-4 gap-4 flex-wrap">
+            <motion.h2
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-xl font-bold text-text-primary"
+            >
+              📊 等级进度
+            </motion.h2>
+            {subjects.length > 1 && currentSubjectId !== null && (
+              <div className="flex flex-wrap gap-2">
+                {subjects
+                  .filter((s) => s.status === 'active')
+                  .map((subject) => (
+                    <button
+                      key={subject.id}
+                      onClick={() => setCurrentSubject(subject.id)}
+                      className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                        subject.id === currentSubjectId
+                          ? 'bg-primary text-white shadow'
+                          : 'bg-white text-text-secondary hover:bg-primary/10'
+                      }`}
+                    >
+                      {subject.name}
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
+          {curriculumLoaded && levels.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-text-muted/30 p-8 text-center text-text-muted bg-white">
+              当前学科暂未配置等级，请联系管理员在「题库管理 → 等级」中添加。
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {levels.map((lvl, index) => {
+                const progress = levelProgress[lvl.level] || {
+                  correctRate: 0,
+                  practicedCount: 0,
+                  status: 'locked' as const,
+                };
+
+                let shouldUnlock = true;
+                if (lvl.level > 1) {
+                  const prev = levels.find((l) => l.level === lvl.level - 1);
+                  if (prev) {
+                    const prevProgress = levelProgress[prev.level];
+                    shouldUnlock = (prevProgress?.correctRate ?? 0) >= 0.8;
+                  }
+                }
+
+                return (
+                  <LevelCard
+                    key={lvl.id}
+                    level={lvl.level}
+                    name={lvl.name}
+                    progress={progress.correctRate}
+                    status={shouldUnlock ? progress.status : 'locked'}
+                    index={index}
+                    onClick={() => navigate(`/practice/${lvl.level}`)}
+                  />
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
