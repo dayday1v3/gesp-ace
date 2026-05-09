@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, BookOpen, FileQuestion, Settings, Bell,
   Search, Filter, Plus, Edit, Trash2, Eye, MoreVertical,
   ChevronDown, CheckCircle2, XCircle, LogOut, ChevronRight,
-  Book, Trophy, Target, Clock, TrendingUp
+  Book, Trophy, Target, Clock, TrendingUp, Upload, FileText,
+  Check, AlertCircle, Loader2, X, Download, Trash, RefreshCw,
+  ChevronLeft, FileCheck, SplitSquareVertical
 } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
 
 const sidebarMenu = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
@@ -30,11 +33,19 @@ const GESP_LEVELS = [
 
 export const QuestionManagement: React.FC = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeLevel, setActiveLevel] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importStep, setImportStep] = useState<'upload' | 'preview' | 'result'>('upload');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [parsedQuestions, setParsedQuestions] = useState<any[]>([]);
+  const [importProgress, setImportProgress] = useState(0);
+  const [selectedParsedQuestions, setSelectedParsedQuestions] = useState<string[]>([]);
 
   const questions = [
     {
@@ -98,6 +109,146 @@ export const QuestionManagement: React.FC = () => {
   const currentLevelInfo = GESP_LEVELS.find(l => l.level === activeLevel)!;
   const totalQuestions = GESP_LEVELS.reduce((sum, l) => sum + l.questionCount, 0);
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+      setIsLoading(true);
+      parsePDF(file);
+    }
+  };
+
+  const parsePDF = async (file: File) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const numPages = pdf.numPages;
+      let fullText = '';
+
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n';
+
+        const progress = Math.round((i / numPages) * 100);
+        setImportProgress(progress);
+      }
+
+      const questions = extractQuestions(fullText);
+      setParsedQuestions(questions);
+      setImportStep('preview');
+      setIsLoading(false);
+    } catch (error) {
+      console.error('PDF解析失败:', error);
+      setIsLoading(false);
+      alert('PDF解析失败，请检查文件格式');
+    }
+  };
+
+  const extractQuestions = (text: string): any[] => {
+    const questions: any[] = [];
+    const lines = text.split('\n').filter(line => line.trim());
+
+    let currentQuestion: any = null;
+    let optionBuffer: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      if (line.match(/^\d+[.、)]/) || line.match(/^[（(]\d+[)）]/)) {
+        if (currentQuestion) {
+          if (currentQuestion.type === 'choice') {
+            currentQuestion.options = [...optionBuffer];
+          }
+          questions.push(currentQuestion);
+          optionBuffer = [];
+        }
+
+        const content = line.replace(/^\d+[.、)）]/, '').replace(/^[（(]\d+[)）]/, '').trim();
+        const nextLine = lines[i + 1]?.trim() || '';
+
+        let type = 'choice';
+        if (nextLine.includes('正确') || nextLine.includes('错误') || nextLine.includes('对') || nextLine.includes('错')) {
+          type = 'judgment';
+        } else if (nextLine.match(/^[A-Da-d][.、)]/) || line.toLowerCase().includes('下列')) {
+          type = 'choice';
+        } else if (line.includes('程序') || line.includes('编写') || line.includes('代码')) {
+          type = 'coding';
+        }
+
+        currentQuestion = {
+          id: `import_${Date.now()}_${questions.length}`,
+          content,
+          type,
+          difficulty: 1,
+          knowledgePoint: '未分类',
+          options: [],
+          correctAnswer: '',
+        };
+      } else if (currentQuestion) {
+        if (currentQuestion.type === 'choice' && line.match(/^[A-Da-d][.、)]/)) {
+          const option = line.replace(/^[A-Da-d][.、)]/, '').trim();
+          optionBuffer.push(option);
+        } else if (line.includes('答案') || line.includes('正确答案')) {
+          const answerMatch = line.match(/[A-Da-d]/);
+          if (answerMatch) {
+            currentQuestion.correctAnswer = answerMatch[0].toUpperCase();
+          }
+        } else if (line.includes('解析') || line.includes('说明')) {
+          currentQuestion.explanation = line;
+        }
+      }
+    }
+
+    if (currentQuestion) {
+      if (currentQuestion.type === 'choice') {
+        currentQuestion.options = [...optionBuffer];
+      }
+      questions.push(currentQuestion);
+    }
+
+    return questions;
+  };
+
+  const handleImport = () => {
+    const selectedForImport = parsedQuestions.filter(q =>
+      selectedParsedQuestions.includes(q.id)
+    );
+    console.log('导入题目:', selectedForImport, '到等级:', activeLevel);
+    setImportStep('result');
+  };
+
+  const resetImport = () => {
+    setShowImportModal(false);
+    setImportStep('upload');
+    setSelectedFile(null);
+    setParsedQuestions([]);
+    setSelectedParsedQuestions([]);
+    setImportProgress(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const toggleQuestionSelection = (id: string) => {
+    setSelectedParsedQuestions(prev =>
+      prev.includes(id)
+        ? prev.filter(qId => qId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const selectAllQuestions = () => {
+    if (selectedParsedQuestions.length === parsedQuestions.length) {
+      setSelectedParsedQuestions([]);
+    } else {
+      setSelectedParsedQuestions(parsedQuestions.map(q => q.id));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
@@ -146,6 +297,13 @@ export const QuestionManagement: React.FC = () => {
               <p className="text-gray-500 text-sm">共 {totalQuestions.toLocaleString()} 道题目，覆盖 GESP 全部8个等级</p>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <Upload className="w-5 h-5" />
+                导入PDF
+              </button>
               <button className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2">
                 <Plus className="w-5 h-5" />
                 添加题目
@@ -412,6 +570,253 @@ export const QuestionManagement: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+          >
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-green-600 to-emerald-600 text-white">
+              <div className="flex items-center gap-3">
+                <FileCheck className="w-6 h-6" />
+                <h2 className="text-xl font-bold">导入PDF题目</h2>
+              </div>
+              <button
+                onClick={resetImport}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6">
+              {importStep === 'upload' && (
+                <div className="space-y-6">
+                  <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-2xl hover:border-green-500 transition-colors">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="pdf-upload"
+                    />
+                    <label htmlFor="pdf-upload" className="cursor-pointer">
+                      <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <p className="text-lg font-medium text-gray-700 mb-2">
+                        点击选择PDF文件或将文件拖拽到此处
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        支持 GESP 真题、模拟题等 PDF 格式文件
+                      </p>
+                    </label>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">导入说明：</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>系统会自动识别PDF中的题目内容</li>
+                          <li>支持单选题、判断题和编程题</li>
+                          <li>导入前请预览并确认题目解析结果</li>
+                          <li>可选择要导入的题目并指定目标等级</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                      <SplitSquareVertical className="w-5 h-5 text-gray-600" />
+                      当前目标等级
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {GESP_LEVELS.map((level) => (
+                        <button
+                          key={level.level}
+                          onClick={() => setActiveLevel(level.level)}
+                          className={`px-4 py-2 rounded-lg transition-all ${
+                            activeLevel === level.level
+                              ? 'bg-green-600 text-white'
+                              : 'bg-white border border-gray-200 text-gray-700 hover:border-green-500'
+                          }`}
+                        >
+                          {level.icon} {level.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {importStep === 'preview' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-gray-600">
+                        已解析 {parsedQuestions.length} 道题目
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">全选</span>
+                        <button
+                          onClick={selectAllQuestions}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            selectedParsedQuestions.length === parsedQuestions.length
+                              ? 'bg-green-600 border-green-600'
+                              : 'border-gray-300 hover:border-green-500'
+                          }`}
+                        >
+                          {selectedParsedQuestions.length === parsedQuestions.length && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      已选择 {selectedParsedQuestions.length} 道题目
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 max-h-[60vh] overflow-auto">
+                    {parsedQuestions.map((question, index) => (
+                      <div
+                        key={question.id}
+                        className={`border rounded-xl p-4 transition-all ${
+                          selectedParsedQuestions.includes(question.id)
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <button
+                            onClick={() => toggleQuestionSelection(question.id)}
+                            className={`w-6 h-6 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors mt-1 ${
+                              selectedParsedQuestions.includes(question.id)
+                                ? 'bg-green-600 border-green-600'
+                                : 'border-gray-300 hover:border-green-500'
+                            }`}
+                          >
+                            {selectedParsedQuestions.includes(question.id) && (
+                              <Check className="w-4 h-4 text-white" />
+                            )}
+                          </button>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-medium text-gray-500">
+                                #{index + 1}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                question.type === 'choice'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : question.type === 'judgment'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : 'bg-purple-100 text-purple-700'
+                              }`}>
+                                {question.type === 'choice' ? '单选题' :
+                                 question.type === 'judgment' ? '判断题' : '编程题'}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                知识点：{question.knowledgePoint}
+                              </span>
+                            </div>
+                            <p className="text-gray-900 mb-2">{question.content}</p>
+                            {question.options.length > 0 && (
+                              <div className="space-y-1 text-sm text-gray-600">
+                                {question.options.map((opt: string, i: number) => (
+                                  <div key={i}>
+                                    {String.fromCharCode(65 + i)}. {opt}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {question.correctAnswer && (
+                              <div className="mt-2 text-sm text-green-600">
+                                答案：{question.correctAnswer}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {importStep === 'result' && (
+                <div className="text-center py-12">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
+                  >
+                    <CheckCircle2 className="w-10 h-10 text-green-600" />
+                  </motion.div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    导入成功！
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    成功导入 {selectedParsedQuestions.length} 道题目到 {currentLevelInfo.name} 题库
+                  </p>
+                  <button
+                    onClick={resetImport}
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
+                  >
+                    完成
+                  </button>
+                </div>
+              )}
+
+              {isLoading && (
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                  <div className="text-center">
+                    <Loader2 className="w-12 h-12 text-green-600 mx-auto mb-4 animate-spin" />
+                    <p className="text-gray-700 font-medium mb-2">正在解析PDF...</p>
+                    <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-600 transition-all duration-300"
+                        style={{ width: `${importProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">{importProgress}%</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {importStep === 'preview' && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <button
+                  onClick={() => setImportStep('upload')}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-2"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  重新选择文件
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={resetImport}
+                    className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    disabled={selectedParsedQuestions.length === 0}
+                    className="px-6 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Upload className="w-5 h-5" />
+                    确认导入 ({selectedParsedQuestions.length})
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
