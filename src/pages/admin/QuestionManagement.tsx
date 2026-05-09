@@ -1,16 +1,12 @@
-import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-  LayoutDashboard, Users, BookOpen, FileQuestion, Settings, Bell,
-  Search, Filter, Plus, Edit, Trash2, Eye, MoreVertical,
-  ChevronDown, CheckCircle2, XCircle, LogOut, ChevronRight,
-  Book, Trophy, Target, Clock, TrendingUp, Upload, FileText,
-  Check, AlertCircle, Loader2, X, Download, Trash, RefreshCw,
-  ChevronLeft, FileCheck, SplitSquareVertical, Menu, X as XIcon
+  Search, Filter, Plus, Edit, Trash2, Eye,
+  CheckCircle2, Book, Trophy, Target, Clock, TrendingUp,
+  Upload, X, ChevronLeft, FileCheck
 } from 'lucide-react';
-import * as pdfjsLib from 'pdfjs-dist';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
+import { AdminLayout } from '../../components/layout/AdminLayout';
 
 const sidebarMenu = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
@@ -33,22 +29,10 @@ const GESP_LEVELS = [
 ];
 
 export const QuestionManagement: React.FC = () => {
-  const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeLevel, setActiveLevel] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [importStep, setImportStep] = useState<'upload' | 'preview' | 'result'>('upload');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [parsedQuestions, setParsedQuestions] = useState<any[]>([]);
-  const [importProgress, setImportProgress] = useState(0);
-  const [selectedParsedQuestions, setSelectedParsedQuestions] = useState<string[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [editingForm, setEditingForm] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -444,7 +428,10 @@ export const QuestionManagement: React.FC = () => {
           {sidebarMenu.map((item) => (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => {
+                navigate(item.path);
+                setSidebarOpen(false);
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                 item.label === '题库管理'
                   ? 'bg-primary text-white'
@@ -458,7 +445,10 @@ export const QuestionManagement: React.FC = () => {
         </nav>
 
         <div className="p-4 border-t border-gray-200">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition-all">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition-all"
+          >
             <LogOut className="w-5 h-5" />
             <span className="font-medium">退出登录</span>
           </button>
