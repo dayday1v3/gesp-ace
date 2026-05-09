@@ -41,6 +41,17 @@ export const QuestionManagement: React.FC = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingForm, setEditingForm] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({
+    content: '',
+    type: 'choice',
+    difficulty: 1,
+    knowledgePoint: '',
+    options: ['', '', '', ''],
+    correctAnswer: '',
+    explanation: '',
+    status: 'active'
+  });
 
   const getActiveLabel = () => {
     const active = sidebarMenu.find(item => location.pathname === item.path);
@@ -292,7 +303,22 @@ export const QuestionManagement: React.FC = () => {
                 <span className="hidden xs:inline">导入PDF</span>
                 <span className="xs:hidden">导入</span>
               </button>
-              <button className="px-3 sm:px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 text-sm sm:text-base">
+              <button
+                onClick={() => {
+                  setNewQuestion({
+                    content: '',
+                    type: 'choice',
+                    difficulty: 1,
+                    knowledgePoint: '',
+                    options: ['', '', '', ''],
+                    correctAnswer: '',
+                    explanation: '',
+                    status: 'active'
+                  });
+                  setShowAddModal(true);
+                }}
+                className="px-3 sm:px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
                 <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="hidden xs:inline">添加题目</span>
                 <span className="xs:hidden">添加</span>
@@ -892,6 +918,264 @@ export const QuestionManagement: React.FC = () => {
                 className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 关闭
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Question Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+          >
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-primary to-indigo-600 text-white">
+              <div className="flex items-center gap-3">
+                <Plus className="w-6 h-6" />
+                <h2 className="text-xl font-bold">新建题目</h2>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  题目内容 <span className="text-red-500">*</span>
+                </label>
+                <RichTextEditor
+                  content={newQuestion.content}
+                  onChange={(content) => setNewQuestion({ ...newQuestion, content })}
+                  placeholder="请输入题目内容，支持粘贴图片..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    题目类型
+                  </label>
+                  <select
+                    value={newQuestion.type}
+                    onChange={(e) => setNewQuestion({ ...newQuestion, type: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="choice">单选题</option>
+                    <option value="judgment">判断题</option>
+                    <option value="coding">编程题</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    难度等级
+                  </label>
+                  <select
+                    value={newQuestion.difficulty}
+                    onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="1">简单</option>
+                    <option value="2">中等</option>
+                    <option value="3">困难</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  知识点
+                </label>
+                <input
+                  type="text"
+                  value={newQuestion.knowledgePoint}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, knowledgePoint: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="例如：变量定义、循环结构等"
+                />
+              </div>
+
+              {newQuestion.type === 'choice' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    选项 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-3">
+                    {newQuestion.options.map((opt: string, i: number) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-600 w-6">
+                          {String.fromCharCode(65 + i)}.
+                        </span>
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => {
+                            const newOptions = [...newQuestion.options];
+                            newOptions[i] = e.target.value;
+                            setNewQuestion({ ...newQuestion, options: newOptions });
+                          }}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder={`选项 ${String.fromCharCode(65 + i)}`}
+                        />
+                        {newQuestion.options.length > 2 && (
+                          <button
+                            onClick={() => {
+                              const newOptions = newQuestion.options.filter((_: any, idx: number) => idx !== i);
+                              setNewQuestion({ ...newQuestion, options: newOptions });
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newOptions = [...newQuestion.options, ''];
+                      setNewQuestion({ ...newQuestion, options: newOptions });
+                    }}
+                    className="mt-3 px-4 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    添加选项
+                  </button>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  正确答案 <span className="text-red-500">*</span>
+                </label>
+                {newQuestion.type === 'choice' ? (
+                  <select
+                    value={newQuestion.correctAnswer}
+                    onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="">请选择正确答案</option>
+                    {newQuestion.options.map((_: string, i: number) => (
+                      <option key={i} value={String.fromCharCode(65 + i)}>
+                        选项 {String.fromCharCode(65 + i)}
+                      </option>
+                    ))}
+                  </select>
+                ) : newQuestion.type === 'judgment' ? (
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="newCorrectAnswer"
+                        value="true"
+                        checked={newQuestion.correctAnswer === 'true'}
+                        onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: e.target.value })}
+                        className="w-4 h-4 text-primary"
+                      />
+                      <span className="text-sm text-gray-700">正确</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="newCorrectAnswer"
+                        value="false"
+                        checked={newQuestion.correctAnswer === 'false'}
+                        onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: e.target.value })}
+                        className="w-4 h-4 text-primary"
+                      />
+                      <span className="text-sm text-gray-700">错误</span>
+                    </label>
+                  </div>
+                ) : (
+                  <textarea
+                    value={newQuestion.correctAnswer}
+                    onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm"
+                    rows={8}
+                    placeholder="输入编程题的参考答案代码..."
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  解析说明
+                </label>
+                <textarea
+                  value={newQuestion.explanation}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                  rows={3}
+                  placeholder="输入题目解析和答题技巧..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  目标等级
+                </label>
+                <select
+                  value={activeLevel}
+                  onChange={(e) => setActiveLevel(parseInt(e.target.value))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  {GESP_LEVELS.map((level) => (
+                    <option key={level.level} value={level.level}>
+                      {level.icon} {level.name} - {level.stage} {level.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  if (!newQuestion.content) {
+                    alert('请输入题目内容');
+                    return;
+                  }
+                  if (newQuestion.type === 'choice' && !newQuestion.correctAnswer) {
+                    alert('请选择正确答案');
+                    return;
+                  }
+                  if (newQuestion.type === 'judgment' && !newQuestion.correctAnswer) {
+                    alert('请选择正确答案');
+                    return;
+                  }
+                  if (newQuestion.type === 'coding' && !newQuestion.correctAnswer) {
+                    alert('请输入参考答案代码');
+                    return;
+                  }
+                  
+                  const newQ = {
+                    id: 'q' + Date.now(),
+                    ...newQuestion,
+                    accuracy: 0,
+                    usedCount: 0,
+                    createdAt: new Date().toISOString().split('T')[0]
+                  };
+                  setQuestions(prev => [newQ, ...prev]);
+                  setShowAddModal(false);
+                }}
+                disabled={!newQuestion.content}
+                className="px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Check className="w-5 h-5" />
+                创建题目
               </button>
             </div>
           </motion.div>
