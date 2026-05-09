@@ -49,8 +49,9 @@ export const QuestionManagement: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [editingForm, setEditingForm] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
-  const questions = [
+  const [questions, setQuestions] = useState([
     {
       id: 'q001',
       content: '在C++中，以下哪个是合法的变量名？',
@@ -60,7 +61,10 @@ export const QuestionManagement: React.FC = () => {
       accuracy: 0.85,
       usedCount: 234,
       status: 'active',
-      createdAt: '2024-01-15'
+      createdAt: '2024-01-15',
+      options: ['A. 123abc', 'B. _abc', 'C. class', 'D. var-1'],
+      correctAnswer: 'B',
+      explanation: '变量名不能以数字开头，不能使用关键字，不能包含特殊字符（除下划线）。'
     },
     {
       id: 'q002',
@@ -71,7 +75,9 @@ export const QuestionManagement: React.FC = () => {
       accuracy: 0.92,
       usedCount: 189,
       status: 'active',
-      createdAt: '2024-01-14'
+      createdAt: '2024-01-14',
+      correctAnswer: 'true',
+      explanation: '在C++中，大部分语句需要以分号结束，但结构体、类的定义等不需要。'
     },
     {
       id: 'q003',
@@ -82,7 +88,9 @@ export const QuestionManagement: React.FC = () => {
       accuracy: 0.68,
       usedCount: 156,
       status: 'active',
-      createdAt: '2024-01-13'
+      createdAt: '2024-01-13',
+      correctAnswer: '#include <iostream>\nusing namespace std;\nint main() {\n    cout << "Hello World" << endl;\n    return 0;\n}',
+      explanation: '这是经典的Hello World程序，使用cout输出内容。'
     },
     {
       id: 'q004',
@@ -93,9 +101,12 @@ export const QuestionManagement: React.FC = () => {
       accuracy: 0.45,
       usedCount: 98,
       status: 'active',
-      createdAt: '2024-01-12'
+      createdAt: '2024-01-12',
+      options: ['A. int', 'B. char', 'C. string', 'D. float'],
+      correctAnswer: 'C',
+      explanation: 'string不是C++关键字，它是标准库中的一个类。int、char、float都是基本数据类型关键字。'
     },
-  ];
+  ]);
 
   const typeLabels: Record<string, { label: string; color: string; bgColor: string }> = {
     choice: { label: '单选题', color: 'text-blue-600', bgColor: 'bg-blue-500/10' },
@@ -303,6 +314,31 @@ export const QuestionManagement: React.FC = () => {
   const handleUpdateFormField = (field: string, value: any) => {
     if (!editingForm) return;
     setEditingForm({ ...editingForm, [field]: value });
+  };
+
+  const handleOpenEditModal = (question: any) => {
+    setEditingForm({ ...question });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEditFromList = () => {
+    if (!editingForm) return;
+    setQuestions(prev =>
+      prev.map(q => q.id === editingForm.id ? { ...editingForm } : q)
+    );
+    setShowEditModal(false);
+    setEditingForm(null);
+  };
+
+  const handleDeleteFromList = (id: string) => {
+    if (confirm('确定要删除这道题目吗？删除后无法恢复。')) {
+      setQuestions(prev => prev.filter(q => q.id !== id));
+    }
+  };
+
+  const handleCancelEditFromList = () => {
+    setShowEditModal(false);
+    setEditingForm(null);
   };
 
   return (
@@ -677,13 +713,18 @@ export const QuestionManagement: React.FC = () => {
                     </td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4">
                       <div className="flex items-center gap-1">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="预览">
-                          <Eye className="w-4 h-4 text-gray-600" />
+                        <button
+                          onClick={() => handleOpenEditModal(question)}
+                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="编辑"
+                        >
+                          <Edit className="w-4 h-4 text-blue-600" />
                         </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="编辑">
-                          <Edit className="w-4 h-4 text-gray-600" />
-                        </button>
-                        <button className="p-2 hover:bg-red-50 rounded-lg transition-colors" title="删除">
+                        <button
+                          onClick={() => handleDeleteFromList(question.id)}
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          title="删除"
+                        >
                           <Trash2 className="w-4 h-4 text-red-600" />
                         </button>
                       </div>
@@ -718,6 +759,251 @@ export const QuestionManagement: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {showEditModal && editingForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+          >
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+              <div className="flex items-center gap-3">
+                <Edit className="w-6 h-6" />
+                <h2 className="text-xl font-bold">编辑题目</h2>
+              </div>
+              <button
+                onClick={handleCancelEditFromList}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  题目内容 <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={editingForm.content}
+                  onChange={(e) => setEditingForm({ ...editingForm, content: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={3}
+                  placeholder="请输入题目内容..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    题目类型
+                  </label>
+                  <select
+                    value={editingForm.type}
+                    onChange={(e) => setEditingForm({ ...editingForm, type: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="choice">单选题</option>
+                    <option value="judgment">判断题</option>
+                    <option value="coding">编程题</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    难度等级
+                  </label>
+                  <select
+                    value={editingForm.difficulty}
+                    onChange={(e) => setEditingForm({ ...editingForm, difficulty: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="1">简单</option>
+                    <option value="2">中等</option>
+                    <option value="3">困难</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  知识点
+                </label>
+                <input
+                  type="text"
+                  value={editingForm.knowledgePoint}
+                  onChange={(e) => setEditingForm({ ...editingForm, knowledgePoint: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="例如：变量定义、循环结构等"
+                />
+              </div>
+
+              {editingForm.type === 'choice' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    选项 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-3">
+                    {(editingForm.options || []).map((opt: string, i: number) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-600 w-6">
+                          {String.fromCharCode(65 + i)}.
+                        </span>
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => {
+                            const newOptions = [...(editingForm.options || [])];
+                            newOptions[i] = e.target.value;
+                            setEditingForm({ ...editingForm, options: newOptions });
+                          }}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder={`选项 ${String.fromCharCode(65 + i)}`}
+                        />
+                        {(editingForm.options || []).length > 2 && (
+                          <button
+                            onClick={() => {
+                              const newOptions = editingForm.options.filter((_: any, idx: number) => idx !== i);
+                              setEditingForm({ ...editingForm, options: newOptions });
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newOptions = [...(editingForm.options || []), ''];
+                      setEditingForm({ ...editingForm, options: newOptions });
+                    }}
+                    className="mt-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    添加选项
+                  </button>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  正确答案 <span className="text-red-500">*</span>
+                </label>
+                {editingForm.type === 'choice' ? (
+                  <select
+                    value={editingForm.correctAnswer}
+                    onChange={(e) => setEditingForm({ ...editingForm, correctAnswer: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">请选择正确答案</option>
+                    {(editingForm.options || []).map((_: string, i: number) => (
+                      <option key={i} value={String.fromCharCode(65 + i)}>
+                        {String.fromCharCode(65 + i)}
+                      </option>
+                    ))}
+                  </select>
+                ) : editingForm.type === 'judgment' ? (
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="correctAnswer"
+                        value="true"
+                        checked={editingForm.correctAnswer === 'true'}
+                        onChange={(e) => setEditingForm({ ...editingForm, correctAnswer: e.target.value })}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">正确</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="correctAnswer"
+                        value="false"
+                        checked={editingForm.correctAnswer === 'false'}
+                        onChange={(e) => setEditingForm({ ...editingForm, correctAnswer: e.target.value })}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">错误</span>
+                    </label>
+                  </div>
+                ) : (
+                  <textarea
+                    value={editingForm.correctAnswer || ''}
+                    onChange={(e) => setEditingForm({ ...editingForm, correctAnswer: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
+                    rows={8}
+                    placeholder="输入编程题的参考答案代码..."
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  解析说明
+                </label>
+                <textarea
+                  value={editingForm.explanation || ''}
+                  onChange={(e) => setEditingForm({ ...editingForm, explanation: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={3}
+                  placeholder="输入题目解析和答题技巧..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  状态
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="status"
+                      value="active"
+                      checked={editingForm.status === 'active'}
+                      onChange={(e) => setEditingForm({ ...editingForm, status: e.target.value })}
+                      className="w-4 h-4 text-green-600"
+                    />
+                    <span className="text-sm text-gray-700">启用</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="status"
+                      value="inactive"
+                      checked={editingForm.status === 'inactive'}
+                      onChange={(e) => setEditingForm({ ...editingForm, status: e.target.value })}
+                      className="w-4 h-4 text-gray-600"
+                    />
+                    <span className="text-sm text-gray-700">禁用</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50">
+              <button
+                onClick={handleCancelEditFromList}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveEditFromList}
+                disabled={!editingForm.content || !editingForm.correctAnswer}
+                className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Check className="w-5 h-5" />
+                保存修改
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {showImportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
