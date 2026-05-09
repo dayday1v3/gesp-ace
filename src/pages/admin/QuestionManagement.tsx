@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, BookOpen, FileQuestion, Settings, Bell,
@@ -7,7 +7,7 @@ import {
   ChevronDown, CheckCircle2, XCircle, LogOut, ChevronRight,
   Book, Trophy, Target, Clock, TrendingUp, Upload, FileText,
   Check, AlertCircle, Loader2, X, Download, Trash, RefreshCw,
-  ChevronLeft, FileCheck, SplitSquareVertical
+  ChevronLeft, FileCheck, SplitSquareVertical, Menu, X as XIcon
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -46,6 +46,7 @@ export const QuestionManagement: React.FC = () => {
   const [parsedQuestions, setParsedQuestions] = useState<any[]>([]);
   const [importProgress, setImportProgress] = useState(0);
   const [selectedParsedQuestions, setSelectedParsedQuestions] = useState<string[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const questions = [
     {
@@ -251,8 +252,92 @@ export const QuestionManagement: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      {/* Mobile Header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🎯</span>
+            <div>
+              <h2 className="font-bold text-gray-900 text-sm">GESP Ace</h2>
+              <p className="text-xs text-gray-500">管理后台</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Menu className="w-6 h-6 text-gray-600" />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="lg:hidden fixed inset-0 bg-black/50 z-40"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-white border-r border-gray-200 flex flex-col z-50"
+            >
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🎯</span>
+                  <div>
+                    <h2 className="font-bold text-gray-900">GESP Ace</h2>
+                    <p className="text-xs text-gray-500">管理后台</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <XIcon className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+
+              <nav className="flex-1 p-4 space-y-1">
+                {sidebarMenu.map((item) => (
+                  <button
+                    key={item.path}
+                    onClick={() => {
+                      navigate(item.path);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                      item.label === '题库管理'
+                        ? 'bg-primary text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                ))}
+              </nav>
+
+              <div className="p-4 border-t border-gray-200">
+                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition-all">
+                  <LogOut className="w-5 h-5" />
+                  <span className="font-medium">退出登录</span>
+                </button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <span className="text-3xl">🎯</span>
@@ -289,44 +374,46 @@ export const QuestionManagement: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <header className="bg-white border-b border-gray-200 px-8 py-4">
-          <div className="flex items-center justify-between">
+      <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">题库管理</h1>
-              <p className="text-gray-500 text-sm">共 {totalQuestions.toLocaleString()} 道题目，覆盖 GESP 全部8个等级</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">题库管理</h1>
+              <p className="text-gray-500 text-xs sm:text-sm">共 {totalQuestions.toLocaleString()} 道题目，覆盖 GESP 全部8个等级</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setShowImportModal(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
               >
-                <Upload className="w-5 h-5" />
-                导入PDF
+                <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden xs:inline">导入PDF</span>
+                <span className="xs:hidden">导入</span>
               </button>
-              <button className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                添加题目
+              <button className="px-3 sm:px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 text-sm sm:text-base">
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden xs:inline">添加题目</span>
+                <span className="xs:hidden">添加</span>
               </button>
             </div>
           </div>
         </header>
 
-        <div className="p-8 space-y-6">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
           {/* Level Cards */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Book className="w-5 h-5 text-primary" />
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <Book className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               选择题库等级
             </h3>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
               {GESP_LEVELS.map((level) => (
                 <motion.button
                   key={level.level}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setActiveLevel(level.level)}
-                  className={`relative p-4 rounded-2xl border-2 transition-all overflow-hidden ${
+                  className={`relative p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all overflow-hidden ${
                     activeLevel === level.level
                       ? 'border-primary bg-primary/5 shadow-lg'
                       : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -334,22 +421,22 @@ export const QuestionManagement: React.FC = () => {
                 >
                   <div className={`absolute inset-0 bg-gradient-to-br ${level.color} opacity-5`} />
                   <div className="relative">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{level.icon}</span>
-                      <span className={`text-lg font-bold ${
+                    <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                      <span className="text-lg sm:text-2xl">{level.icon}</span>
+                      <span className={`text-sm sm:text-lg font-bold ${
                         activeLevel === level.level ? 'text-primary' : 'text-gray-700'
                       }`}>
                         {level.name}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mb-1">{level.stage}</p>
-                    <p className="text-sm text-gray-600 mb-3">{level.description}</p>
+                    <p className="text-xs text-gray-500 mb-1 hidden sm:block">{level.stage}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 hidden sm:block">{level.description}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-gray-500">
                         {level.questionCount} 题
                       </span>
                       {activeLevel === level.level && (
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                        <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                       )}
                     </div>
                   </div>
@@ -359,7 +446,7 @@ export const QuestionManagement: React.FC = () => {
           </div>
 
           {/* Level Statistics */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -421,8 +508,8 @@ export const QuestionManagement: React.FC = () => {
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex flex-wrap gap-4 items-center">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap gap-3 sm:gap-4 items-stretch sm:items-center">
               <div className="flex-1 min-w-[200px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -431,7 +518,7 @@ export const QuestionManagement: React.FC = () => {
                     placeholder="搜索题目内容..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                   />
                 </div>
               </div>
@@ -439,7 +526,7 @@ export const QuestionManagement: React.FC = () => {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               >
                 <option value="all">全部类型</option>
                 <option value="choice">单选题</option>
@@ -447,7 +534,11 @@ export const QuestionManagement: React.FC = () => {
                 <option value="coding">编程题</option>
               </select>
 
-              <button className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-sm sm:hidden">
+                <Filter className="w-4 h-4" />
+                筛选
+              </button>
+              <button className="px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors items-center gap-2 text-sm hidden sm:flex">
                 <Filter className="w-4 h-4" />
                 更多筛选
               </button>
@@ -456,28 +547,29 @@ export const QuestionManagement: React.FC = () => {
 
           {/* Questions Table */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                 {currentLevelInfo.icon} {currentLevelInfo.name} - 题目列表
               </h3>
-              <span className="text-sm text-gray-500">
+              <span className="text-xs sm:text-sm text-gray-500">
                 共 {currentLevelInfo.questionCount} 道题目
               </span>
             </div>
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">题目内容</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">类型</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">难度</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">知识点</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">正确率</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">使用次数</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">状态</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full min-w-[800px] sm:min-w-0">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-600">题目内容</th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-600">类型</th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-600 hidden md:table-cell">难度</th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-600 hidden lg:table-cell">知识点</th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-600 hidden sm:table-cell">正确率</th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-600 hidden lg:table-cell">使用次数</th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-600 hidden sm:table-cell">状态</th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-medium text-gray-600">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
                 {questions.map((question) => (
                   <motion.tr
                     key={question.id}
@@ -485,28 +577,28 @@ export const QuestionManagement: React.FC = () => {
                     animate={{ opacity: 1 }}
                     className="hover:bg-gray-50 transition-colors"
                   >
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900 line-clamp-2 max-w-md">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4">
+                      <p className="text-sm text-gray-900 line-clamp-2 max-w-xs sm:max-w-md">
                         {question.content}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-gray-400 mt-1 hidden sm:block">
                         添加于 {question.createdAt}
                       </p>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${typeLabels[question.type].bgColor} ${typeLabels[question.type].color}`}>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4">
+                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${typeLabels[question.type].bgColor} ${typeLabels[question.type].color}`}>
                         {typeLabels[question.type].label}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${difficultyLabels[question.difficulty].color}`}>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
+                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${difficultyLabels[question.difficulty].color}`}>
                         {difficultyLabels[question.difficulty].label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{question.knowledgePoint}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-sm text-gray-600 hidden lg:table-cell">{question.knowledgePoint}</td>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 hidden sm:table-cell">
                       <div className="flex items-center gap-2">
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
+                        <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-1.5 sm:h-2">
                           <div
                             className={`h-full rounded-full ${
                               question.accuracy >= 0.7 ? 'bg-green-500' :
@@ -515,12 +607,12 @@ export const QuestionManagement: React.FC = () => {
                             style={{ width: `${question.accuracy * 100}%` }}
                           />
                         </div>
-                        <span className="text-sm text-gray-600">{Math.round(question.accuracy * 100)}%</span>
+                        <span className="text-xs sm:text-sm text-gray-600">{Math.round(question.accuracy * 100)}%</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{question.usedCount}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600 hidden lg:table-cell">{question.usedCount}</td>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 hidden sm:table-cell">
+                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
                         question.status === 'active'
                           ? 'bg-green-500/10 text-green-600'
                           : 'bg-gray-500/10 text-gray-600'
@@ -528,7 +620,7 @@ export const QuestionManagement: React.FC = () => {
                         {question.status === 'active' ? '启用' : '禁用'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4">
                       <div className="flex items-center gap-1">
                         <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="预览">
                           <Eye className="w-4 h-4 text-gray-600" />
@@ -545,6 +637,7 @@ export const QuestionManagement: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Pagination */}
