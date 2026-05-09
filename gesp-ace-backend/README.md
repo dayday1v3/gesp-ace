@@ -37,8 +37,8 @@ cp .env.example .env
 ### 4. 初始化数据库
 
 ```bash
-# 使用 Docker Compose 启动数据库
-docker-compose up -d postgres redis judge0
+# 使用 Docker Compose 启动数据库与 Judge0（官方镜像 judge0/judge0，含 workers）
+docker compose up -d postgres redis judge0 judge0-workers
 
 # 生成 Prisma Client
 npm run prisma:generate
