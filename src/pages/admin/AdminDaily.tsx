@@ -5,12 +5,13 @@ import {
   LayoutDashboard, Users, BookOpen, FileQuestion, Settings, Bell,
   Search, Plus, Edit, Trash2, Eye, Calendar, Clock, CheckCircle2,
   ChevronLeft, ChevronRight, Star, TrendingUp, Target, FileText,
-  BarChart3, RefreshCw
+  BarChart3, RefreshCw, GraduationCap
 } from 'lucide-react';
 
 const sidebarMenu = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
   { icon: FileQuestion, label: '题库管理', path: '/admin/questions' },
+  { icon: GraduationCap, label: '学科与等级', path: '/admin/curriculum' },
   { icon: Users, label: '用户管理', path: '/admin/users' },
   { icon: BookOpen, label: '知识手册', path: '/admin/handbook' },
   { icon: Bell, label: '每日一题', path: '/admin/daily' },

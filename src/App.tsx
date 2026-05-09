@@ -26,6 +26,7 @@ import { UserManagement } from '@/pages/admin/UserManagement';
 import { AdminHandbook } from '@/pages/admin/AdminHandbook';
 import { AdminDaily } from '@/pages/admin/AdminDaily';
 import { AdminSettings } from '@/pages/admin/AdminSettings';
+import { CurriculumManagement } from '@/pages/admin/CurriculumManagement';
 
 const Loading = () => (
   <div className="min-h-screen bg-bg-primary flex items-center justify-center">
@@ -67,6 +68,7 @@ function App() {
           <Route path="/admin/handbook" element={<AdminHandbook />} />
           <Route path="/admin/daily" element={<AdminDaily />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin/curriculum" element={<CurriculumManagement />} />
         </Routes>
       </HashRouter>
     </Suspense>

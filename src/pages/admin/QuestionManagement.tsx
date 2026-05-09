@@ -5,7 +5,7 @@ import {
   Search, Filter, Plus, Edit, Trash2, Eye,
   CheckCircle2, Book, Target, Clock, TrendingUp,
   Upload, X, FileCheck, Check, AlertCircle,
-  LayoutDashboard, FileQuestion as FileQuestionIcon, Users, BookOpen, Bell, Settings, LogOut
+  LayoutDashboard, FileQuestion as FileQuestionIcon, Users, BookOpen, Bell, Settings, LogOut, GraduationCap
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
@@ -25,6 +25,7 @@ const GESP_LEVELS = [
 const sidebarMenu = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin/dashboard' },
   { icon: FileQuestionIcon, label: '题库管理', path: '/admin/questions' },
+  { icon: GraduationCap, label: '学科与等级', path: '/admin/curriculum' },
   { icon: Users, label: '用户管理', path: '/admin/users' },
   { icon: BookOpen, label: '知识手册', path: '/admin/handbook' },
   { icon: Bell, label: '每日一题', path: '/admin/daily' },
