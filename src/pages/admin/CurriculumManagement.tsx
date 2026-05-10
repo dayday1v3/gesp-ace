@@ -41,6 +41,21 @@ const emptyLevel = (subjectId: number): LevelWriteInput => ({
   status: 'locked',
 });
 
+function describeError(err: unknown): string {
+  if (!err) return '未知错误';
+  if (typeof err === 'string') return err;
+  const candidate = err as { message?: string; code?: number; errors?: Record<string, string[]> };
+  if (candidate.errors && typeof candidate.errors === 'object') {
+    const messages = Object.entries(candidate.errors)
+      .map(([k, v]) => `${k}: ${(v as string[]).join('; ')}`)
+      .join(' | ');
+    if (messages) return messages;
+  }
+  if (candidate.code === 401) return '请先登录管理员账号（401）';
+  if (candidate.code === 403) return '当前账号不是管理员（403），请联系管理员或将 users.role 改为 admin';
+  return candidate.message || '请求失败';
+}
+
 export const CurriculumManagement: React.FC = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>('subjects');
@@ -48,6 +63,7 @@ export const CurriculumManagement: React.FC = () => {
   const [levels, setLevels] = useState<LevelItem[]>([]);
   const [activeSubjectId, setActiveSubjectId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [subjectForm, setSubjectForm] = useState<SubjectWriteInput | null>(null);
   const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null);
@@ -55,8 +71,13 @@ export const CurriculumManagement: React.FC = () => {
   const [levelForm, setLevelForm] = useState<LevelWriteInput | null>(null);
   const [editingLevelId, setEditingLevelId] = useState<number | null>(null);
 
+  const handleError = (err: unknown) => {
+    setErrorMsg(describeError(err));
+  };
+
   const loadSubjects = async () => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const response = await subjectAPI.list(true);
       const items = response.data?.subjects ?? [];
@@ -64,6 +85,8 @@ export const CurriculumManagement: React.FC = () => {
       if (!activeSubjectId && items.length > 0) {
         setActiveSubjectId(items[0].id);
       }
+    } catch (err) {
+      handleError(err);
     } finally {
       setLoading(false);
     }
@@ -71,9 +94,12 @@ export const CurriculumManagement: React.FC = () => {
 
   const loadLevels = async (subjectId: number) => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const response = await levelAPI.list({ subjectId });
       setLevels(response.data?.levels ?? []);
+    } catch (err) {
+      handleError(err);
     } finally {
       setLoading(false);
     }
@@ -111,22 +137,32 @@ export const CurriculumManagement: React.FC = () => {
 
   const submitSubject = async () => {
     if (!subjectForm) return;
-    if (editingSubjectId) {
-      await subjectAPI.update(editingSubjectId, subjectForm);
-    } else {
-      await subjectAPI.create(subjectForm);
+    setErrorMsg(null);
+    try {
+      if (editingSubjectId) {
+        await subjectAPI.update(editingSubjectId, subjectForm);
+      } else {
+        await subjectAPI.create(subjectForm);
+      }
+      setSubjectForm(null);
+      setEditingSubjectId(null);
+      await loadSubjects();
+    } catch (err) {
+      handleError(err);
     }
-    setSubjectForm(null);
-    setEditingSubjectId(null);
-    await loadSubjects();
   };
 
   const removeSubject = async (s: Subject) => {
     if (!window.confirm(`确认删除学科「${s.name}」？若仍有等级将被自动归档（status=inactive）。`)) {
       return;
     }
-    await subjectAPI.remove(s.id);
-    await loadSubjects();
+    setErrorMsg(null);
+    try {
+      await subjectAPI.remove(s.id);
+      await loadSubjects();
+    } catch (err) {
+      handleError(err);
+    }
   };
 
   const openLevelCreate = () => {
@@ -156,14 +192,19 @@ export const CurriculumManagement: React.FC = () => {
 
   const submitLevel = async () => {
     if (!levelForm) return;
-    if (editingLevelId) {
-      await levelAPI.update(editingLevelId, levelForm);
-    } else {
-      await levelAPI.create(levelForm);
+    setErrorMsg(null);
+    try {
+      if (editingLevelId) {
+        await levelAPI.update(editingLevelId, levelForm);
+      } else {
+        await levelAPI.create(levelForm);
+      }
+      setLevelForm(null);
+      setEditingLevelId(null);
+      if (activeSubjectId) await loadLevels(activeSubjectId);
+    } catch (err) {
+      handleError(err);
     }
-    setLevelForm(null);
-    setEditingLevelId(null);
-    if (activeSubjectId) await loadLevels(activeSubjectId);
   };
 
   const removeLevel = async (l: LevelItem) => {
@@ -172,8 +213,13 @@ export const CurriculumManagement: React.FC = () => {
       ? '该等级仍被题目或知识点引用，将仅归档为 locked，不会真正删除。'
       : '该等级没有关联数据，将真正删除。';
     if (!window.confirm(`确认操作等级「Lv.${l.level} ${l.name}」？\n${note}`)) return;
-    await levelAPI.remove(l.id);
-    if (activeSubjectId) await loadLevels(activeSubjectId);
+    setErrorMsg(null);
+    try {
+      await levelAPI.remove(l.id);
+      if (activeSubjectId) await loadLevels(activeSubjectId);
+    } catch (err) {
+      handleError(err);
+    }
   };
 
   return (
@@ -245,6 +291,16 @@ export const CurriculumManagement: React.FC = () => {
         </header>
 
         <div className="p-8 space-y-6">
+          {errorMsg && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold mb-0.5">操作失败</div>
+                <div>{errorMsg}</div>
+              </div>
+              <button onClick={() => setErrorMsg(null)} className="text-red-400 hover:text-red-600 px-2">×</button>
+            </div>
+          )}
+
           {tab === 'subjects' && (
             <section className="bg-white rounded-2xl shadow-sm">
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
