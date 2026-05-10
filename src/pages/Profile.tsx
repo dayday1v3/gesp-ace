@@ -27,7 +27,7 @@ const achievements = [
 
 export const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const { username, streakDays, totalPracticeDays, achievements: userAchievements, totalScore } =
+  const { username, streakDays, totalPracticeDays, achievements: userAchievements, totalScore, logout } =
     useUserStore();
 
   const stats = [
@@ -196,6 +196,10 @@ export const Profile: React.FC = () => {
             variant="ghost"
             className="w-full text-danger hover:bg-danger/10"
             icon={<LogOut className="w-5 h-5" />}
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
           >
             退出登录
           </Button>
