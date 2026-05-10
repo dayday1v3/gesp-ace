@@ -3,6 +3,26 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { authAPI } from '@/services/auth';
+
+interface ApiErrorPayload {
+  message?: string;
+  code?: number;
+  errors?: Record<string, string[]>;
+}
+
+function describeError(err: unknown): string {
+  if (!err) return '登录失败';
+  if (typeof err === 'string') return err;
+  const payload = err as ApiErrorPayload;
+  if (payload.errors && typeof payload.errors === 'object') {
+    const detail = Object.entries(payload.errors)
+      .map(([k, v]) => `${k}: ${(v as string[]).join('; ')}`)
+      .join(' | ');
+    if (detail) return detail;
+  }
+  return payload.message || '登录失败';
+}
 
 export const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -14,23 +34,46 @@ export const AdminLogin: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
     if (!username || !password) {
       setError('请输入用户名和密码');
-      setLoading(false);
       return;
     }
 
-    setTimeout(() => {
-      if (username === 'admin' && password === 'admin123') {
-        localStorage.setItem('admin_token', 'mock_token');
-        navigate('/admin/dashboard');
-      } else {
-        setError('用户名或密码错误');
+    setLoading(true);
+    try {
+      const response = await authAPI.login({ username, password });
+      // axios interceptor unwraps to response.data; runtime shape is { code, message, data: { token, user } }.
+      // Tolerate both envelopes when the interceptor changes.
+      const envelope = response as unknown as {
+        data?: { token: string; user: { role?: string; username: string } };
+        token?: string;
+        user?: { role?: string; username: string };
+      };
+      const token = envelope.data?.token ?? envelope.token;
+      const user = envelope.data?.user ?? envelope.user;
+
+      if (!token || !user) {
+        setError('登录响应异常，请联系管理员');
+        return;
       }
+
+      if (user.role !== 'admin') {
+        setError(`账号「${user.username}」不是管理员，请使用管理员账号登录`);
+        return;
+      }
+
+      localStorage.setItem('token', token);
+      // Keep the legacy admin_token so any other code paths that still read it
+      // do not break; the source of truth for API calls is `token`.
+      localStorage.setItem('admin_token', token);
+
+      navigate('/admin/dashboard');
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -102,9 +145,9 @@ export const AdminLogin: React.FC = () => {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-white/10 text-center">
-            <p className="text-slate-500 text-sm">
-              测试账号：admin / admin123
+          <div className="mt-6 pt-6 border-t border-white/10 text-center space-y-1">
+            <p className="text-slate-500 text-xs">
+              管理员账号需要在数据库里 <span className="font-mono">UPDATE users SET role='admin' ...</span>
             </p>
           </div>
         </Card>

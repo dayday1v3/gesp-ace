@@ -28,6 +28,7 @@ export interface UserInfo {
   examDate?: string;
   achievements: string[];
   levelProgress: Record<number, LevelProgressInfo>;
+  role?: 'student' | 'admin' | string;
 }
 
 export interface LevelProgressInfo {
