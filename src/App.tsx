@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { Home } from '@/pages/Home';
+import { Login } from '@/pages/Login';
 import { Daily } from '@/pages/Daily';
 import { Practice } from '@/pages/Practice';
 import { Mistakes } from '@/pages/Mistakes';
@@ -43,6 +44,7 @@ function App() {
       <HashRouter>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/daily" element={<Daily />} />
           <Route path="/practice" element={<Practice />} />
           <Route path="/practice/:level" element={<Practice />} />
